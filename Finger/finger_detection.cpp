@@ -9,6 +9,12 @@ using namespace std;
 using namespace cv;
 
 
+bool touch(Vec3f circle, Point p, float epsilon)
+{
+	float distance = sqrt((circle[0] - p.x) * (circle[0] - p.x) + (circle[1] - p.y) * (circle[1] - p.y));
+	return abs(distance - circle[2]) < epsilon;
+}
+
 int main() {
 	VideoCapture cap;
 
@@ -79,24 +85,29 @@ int main() {
 
 		cv::dilate(single_contour, single_contour, cv::Mat(), cv::Point(-1, -1));
 
-		vector<Vec3f> circles;
+		vector<Vec3f> circles, circles_fil;
 		HoughCircles(single_contour, circles, CV_HOUGH_GRADIENT,
-			2.7, 30, 150, 50, 0, 30);
-		cout << circles.size() << endl;
-	
+			2.7, 30, 150, 50, 0, 30);	
 
-		for (size_t i = 0; i < circles.size(); i++)
+		//Filter by circles who touch convexHull
+		for (size_t i = 0; i < circles.size(); ++i)
+			for (size_t j = 0; j < hull[0].size(); ++j)
+				if (touch(circles[i], hull[0][j], 5))
+					circles_fil.push_back(circles[i]);
+				
+
+		for (size_t i = 0; i < circles_fil.size(); ++i)
 		{
-			Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-			int radius = cvRound(circles[i][2]);
+			Point center(cvRound(circles_fil[i][0]), cvRound(circles_fil[i][1]));
+			int radius = cvRound(circles_fil[i][2]);
 			// draw the circle center
-			circle(single_contour, center, 3, Scalar(255, 255, 255), -1, 8, 0);
+			circle(Frame, center, 3, Scalar(255, 255, 255), -1, 8, 0);
 			// draw the circle outline
-			circle(single_contour, center, radius, Scalar(255, 255, 255), 3, 8, 0);
+			circle(Frame, center, radius, Scalar(255, 255, 255), 3, 8, 0);
 		}
 
-		imshow("blank", single_contour);
-		//imshow("Finger Detection", Frame);
+		//imshow("blank", single_contour);
+		imshow("Finger Detection", Frame);
 		
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
