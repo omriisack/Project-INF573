@@ -27,8 +27,11 @@ int main() {
 
 		if (Frame.empty()) break; // end of video stream
 		cvtColor(Frame, grey, COLOR_BGR2GRAY);
-		Canny(grey, can, 20, 150);
+		GaussianBlur(grey, grey, Size(9, 9), 0.1, 0.1);
+
+		Canny(grey, can, 20, 100);
 		cv::dilate(can, can, cv::Mat(), cv::Point(-1, -1));
+	
 		findContours(can, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
 
 
@@ -60,16 +63,41 @@ int main() {
 		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
 		vector<vector<Point>> hull(1);
 		convexHull(Mat(filtered[0]), hull[0], false);
+
 		drawContours(Frame, hull, 0, Scalar(0, 0, 128), 1, 8, vector<Vec4i>(), 0, Point());
 		for (int k = 0; k < hull[0].size(); ++k)
-		{
 			circle(Frame, hull[0][k], 4, Scalar(0, 0, 0), -1, 8, 0);
-		}
 		circle(Frame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
 		drawContours(Frame, filtered, 0, Scalar(128, 0, 0), 2);
 	
+
+		Mat single_contour(m, n, CV_8U, Scalar(0, 0, 0));
 		
-		imshow("Finger Detection", Frame);
+		for (int i = 0; i < filtered[0].size(); ++i)
+			single_contour.at<uchar>(filtered[0][i].y, filtered[0][i].x) = 255;
+	
+
+		cv::dilate(single_contour, single_contour, cv::Mat(), cv::Point(-1, -1));
+
+		vector<Vec3f> circles;
+		HoughCircles(single_contour, circles, CV_HOUGH_GRADIENT,
+			2.7, 30, 150, 50, 0, 30);
+		cout << circles.size() << endl;
+	
+
+		for (size_t i = 0; i < circles.size(); i++)
+		{
+			Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+			int radius = cvRound(circles[i][2]);
+			// draw the circle center
+			circle(single_contour, center, 3, Scalar(255, 255, 255), -1, 8, 0);
+			// draw the circle outline
+			circle(single_contour, center, radius, Scalar(255, 255, 255), 3, 8, 0);
+		}
+
+		imshow("blank", single_contour);
+		//imshow("Finger Detection", Frame);
+		
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
 	
