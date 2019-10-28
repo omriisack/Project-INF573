@@ -43,10 +43,12 @@ int main() {
 			}
 		}
 
-		for (int j = 0; j < contours[max_index].size(); ++j)
-			if (contours[max_index][j].y < m - 80)
-				filtered[0].push_back(contours[max_index][j]);
+	//	for (int j = 0; j < contours[max_index].size(); ++j)
+	//		if (contours[max_index][j].y < m - 80)
+	//			filtered[0].push_back(contours[max_index][j]);
 		
+	approxPolyDP(contours[max_index], filtered, 0.1, true);
+
 
 		if (filtered.size())
 		{
