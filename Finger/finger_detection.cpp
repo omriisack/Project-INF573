@@ -46,15 +46,10 @@ int main() {
 		if (!contours.size())
 			continue;
 		
-			for (int j = 0; j < contours[max_index].size(); ++j)
-				if (contours[max_index][j].y < m - 80)
-					filtered[0].push_back(contours[max_index][j]);
+		for (int j = 0; j < contours[max_index].size(); ++j)
+			if (contours[max_index][j].y < m * 0.8)
+				filtered[0].push_back(contours[max_index][j]);
 		
-	
-		
-	
-
-
 		if (!filtered.size() || !filtered[0].size())
 			continue;
 
@@ -72,10 +67,7 @@ int main() {
 		}
 		circle(Frame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
 		drawContours(Frame, filtered, 0, Scalar(128, 0, 0), 2);
-		
-		
-		
-		
+	
 		
 		imshow("Finger Detection", Frame);
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
