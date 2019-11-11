@@ -3,16 +3,18 @@
 using namespace std;
 using namespace cv;
 
-
 // Set the current Frame
 // Suppose that this function is called every frame!
 void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
+    currentFrameIdx++;
     if (currentFrameIdx%frameJump == 0) {
         previousFrame = currentFrame;
         currentFrameIdx = 0;
     }
-
     currentFrame = Image<Vec3b>(frame.clone());
+
+    if (previousFrame.empty())
+        previousFrame = currentFrame;
 }
 
 // Computer the difference between the current frame and previous frame
@@ -40,7 +42,7 @@ void PreProcessing::frameDifferencing(uchar threshold, bool show) {
     }
 }
 
-bool PreProcessing::findLargestIntersectionContour(vector<Point>& largestIntersection) {
+bool PreProcessing::findLargestIntersectionContour() {
     vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
     findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
@@ -65,10 +67,12 @@ bool PreProcessing::findLargestIntersectionContour(vector<Point>& largestInterse
         }
     }
 
-    if (max_index >= 0) {
-        largestIntersection = intersections[max_index];
-        return true;
-    }
+    if (max_index < 0)
+        return false;
 
-    return false;
+    filteredContours.clear();
+    filteredContours.push_back(intersections[max_index]);
+    intersectionFrame = Image<Vec3b>(currentFrame.clone());
+    drawContours(intersectionFrame, filteredContours, 0, Scalar(128, 0, 0), 2);    
+    return true;
 }
