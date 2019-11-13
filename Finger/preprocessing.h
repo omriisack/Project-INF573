@@ -6,7 +6,7 @@ class PreProcessing {
     Image<Vec3b> currentFrame;
     Image<Vec3b> previousFrame;
     
-    Image<uchar> difference;
+   Mat difference;
     Image<uchar> canny;
     Image<Vec3b> intersectionFrame;
 
@@ -24,7 +24,7 @@ class PreProcessing {
     // Get functions
     Image<Vec3b>& getCurrentFrame() { return currentFrame; }
     Image<Vec3b>& getPreviousFrame() { return previousFrame; }
-    Image<uchar>& getDifference() { return difference; }
+    Mat& getDifference() { return difference; }
     Image<uchar>& getCanny() { return canny; }
     Image<Vec3b>& getIntersectionFrame() { return intersectionFrame; }
     vector<vector<Point>>& getFilteredContours() { return filteredContours; }

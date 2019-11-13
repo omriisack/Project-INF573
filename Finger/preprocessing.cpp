@@ -20,14 +20,18 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencing(uchar threshold, bool show) {
     Mat diff;
-    absdiff(previousFrame.greyImage(), currentFrame.greyImage(), diff);
-    difference = Image<uchar>(Mat::zeros(diff.rows, diff.cols, CV_8U));
+
+	Mat prevGrey, curGrey;
+	cvtColor(previousFrame, prevGrey, COLOR_BGR2GRAY);
+	cvtColor(currentFrame, curGrey, COLOR_BGR2GRAY);
+
+    subtract(prevGrey,curGrey , diff); //CHANGED HERE TO SUBTRACT
+    difference = Mat::zeros(diff.rows, diff.cols, CV_8U);
 
     for(int i = 0; i < diff.rows; i++) {
         for(int j = 0; j < diff.cols; j++) {
-            uchar pix = diff.at<uchar>(i, j);
-
-            if(pix>threshold)
+            auto pix = diff.at<uchar>(i, j);
+            if(pix > threshold)
                 difference.at<uchar>(i, j) = 255;
         }
     }
@@ -49,7 +53,6 @@ bool PreProcessing::findLargestIntersectionContour() {
 
     int max_index = -1, max_area = 0;
     vector<vector<Point>> intersections;
-
     for (const vector<Point>& contour : contours) {
         for (const Point& p : contour) {
             if (difference.at<uchar>(p.y, p.x) > 0) {
@@ -74,5 +77,6 @@ bool PreProcessing::findLargestIntersectionContour() {
     filteredContours.push_back(intersections[max_index]);
     intersectionFrame = Image<Vec3b>(currentFrame.clone());
     drawContours(intersectionFrame, filteredContours, 0, Scalar(128, 0, 0), 2);    
+	imshow("intersection", intersectionFrame);
     return true;
 }
