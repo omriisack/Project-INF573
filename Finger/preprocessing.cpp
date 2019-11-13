@@ -20,12 +20,7 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencing(uchar threshold, bool show) {
     Mat diff;
-
-	Mat prevGrey, curGrey;
-	cvtColor(previousFrame, prevGrey, COLOR_BGR2GRAY);
-	cvtColor(currentFrame, curGrey, COLOR_BGR2GRAY);
-
-    subtract(prevGrey,curGrey , diff); //CHANGED HERE TO SUBTRACT
+    subtract(previousFrame.greyImage(), currentFrame.greyImage(), diff); //CHANGED HERE TO SUBTRACT
     difference = Mat::zeros(diff.rows, diff.cols, CV_8U);
 
     for(int i = 0; i < diff.rows; i++) {
