@@ -1,5 +1,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/video/background_segm.hpp>
 #include <iostream>
 #include <fstream>
 #include "image.h"
@@ -16,29 +17,33 @@ bool touch(Vec3f circle, Point p, float epsilon)
 }
 
 
-void detectFingers(Mat& frame, vector<vector<Point>>& handContour)
+void convexHulls(Mat& frame, vector<vector<Point>>& contours)
 {
 	int m = frame.rows, n = frame.cols;
-
-	Moments mu = moments(handContour[0], false);
-
-	// get the centroid of figures.
-	Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
-	vector<vector<Point>> hull(1);
-	convexHull(Mat(handContour[0]), hull[0], false);
-
-	Mat circlesFrame = frame.clone();
-	drawContours(circlesFrame, hull, 0, Scalar(0, 0, 128), 1, 8, vector<Vec4i>(), 0, Point());
-	for (int k = 0; k < hull[0].size(); ++k)
-		circle(circlesFrame, hull[0][k], 4, Scalar(0, 0, 0), -1, 8, 0);
-	circle(circlesFrame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
-	drawContours(circlesFrame, handContour, 0, Scalar(128, 0, 0), 2);
+	vector<vector<Point>> hull(contours.size());
 
 
+	for (int i = 0; i < contours.size(); ++i)
+	{
+		Moments mu = moments(contours[i], false);
+
+		// get the centroid of figures.
+		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
+		convexHull(Mat(contours[i]), hull[i], false);
+
+		drawContours(frame, hull, i, Scalar(0, 0, 128), 1, 8, vector<Vec4i>(), 0, Point());
+		//for (int k = 0; k < hull[i].size(); ++k)
+		//	circle(frame, hull[i][k], 4, Scalar(0, 0, 0), -1, 8, 0);
+		//circle(frame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
+		drawContours(frame, contours, 0, Scalar(128, 0, 0), 2);
+	}
+	
+
+	/*
 	Mat single_contour(m, n, CV_8U, Scalar(0, 0, 0));
 
-	for (int i = 0; i < handContour[0].size(); ++i)
-		single_contour.at<uchar>(handContour[0][i].y, handContour[0][i].x) = 255;
+	for (int i = 0; i < contours[0].size(); ++i)
+		single_contour.at<uchar>(contours[0][i].y, contours[0][i].x) = 255;
 
 
 	cv::dilate(single_contour, single_contour, cv::Mat(), cv::Point(-1, -1));
@@ -65,42 +70,38 @@ void detectFingers(Mat& frame, vector<vector<Point>>& handContour)
 	}
 
 	frame = circlesFrame;
+	*/
 }
 
 
 int main() {
-	VideoCapture cap;
+	VideoCapture capture;
 
-	if (!cap.open(0))
+	if (!capture.open(0))
 		return 0;
 
 	int frameJump = 2;
 	PreProcessing preProcessing(frameJump);
 	Image<Vec3b> frame;
+	Mat fgMask, copy;
+
 	while(true)
 	{
-		cap >> frame;
-		if (frame.empty()) break; // end of video stream
-		
+		capture >> frame;
+		if (frame.empty())
+			break;
+
 		preProcessing.setCurrentFrame(frame);
-		preProcessing.frameDifferencing(50, true);
-		preProcessing.applyGaussianBlur(preProcessing.getCurrentFrame().greyImage(), Size(9, 9), 0.1, 0.1);
-		preProcessing.applyCanny(preProcessing.getCurrentFrame().greyImage(), 50, 100);
-		preProcessing.applyDilate(preProcessing.getCanny(), 1);
-		imshow("canny", preProcessing.getCanny());
-		
-		
-		preProcessing.findLargestIntersectionContour();
-		
-		vector<vector<Point>>& filtered = preProcessing.getFilteredContours();
+		preProcessing.frameDifferencing(20, false);
+		preProcessing.fillGaps(preProcessing.getDifference(), 10);
+		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
+		preProcessing.addContours();
+		convexHulls(frame, preProcessing.getFilteredContours());
 
-		if (!filtered.size() || !filtered[0].size())
-			continue;
+		imshow("filled", preProcessing.getDifference());
+		imshow("Contours", preProcessing.getIntersectionFrame());
+		imshow("Frame", frame);
 
-		detectFingers(frame, filtered);
-
-		imshow("Finger Detection", frame);
-		
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
 	
