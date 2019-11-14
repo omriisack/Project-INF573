@@ -50,16 +50,25 @@ void PreProcessing::addContours()
 }
 
 
-void fillLine(Image<uchar>& frame, int line, int first, int last)
+void fillRow(Image<uchar>& frame, int row, int first, int last)
 {
 	if (first < last)
 	{
 		for (int i = first; i < last; ++i)
-			frame.at<uchar>(line, i) = 255;
+			frame.at<uchar>(row, i) = 255;
 	}
 }
 
-void PreProcessing::fillGaps(Image<uchar>& frame, int gap)
+void fillCol(Image<uchar>& frame, int col, int first, int last)
+{
+	if (first < last)
+	{
+		for (int i = first; i < last; ++i)
+			frame.at<uchar>(i, col) = 255;
+	}
+}
+
+void PreProcessing::fillHorizontalGaps(Image<uchar>& frame, int gap)
 {
 	int m = frame.rows, n = frame.cols, start, end;
 
@@ -71,7 +80,7 @@ void PreProcessing::fillGaps(Image<uchar>& frame, int gap)
 					//If next white space is within "gap" pixels, fille everything in between
 					if (frame.at<uchar>(i, end) == 255 && end - start < gap)
 					{
-						fillLine(frame, i, start, end);
+						fillRow(frame, i, start, end);
 						start = end - 1; //Continue scan from where stopped 
 						//will be incremented by one since its the end of the loop
 						break;
@@ -79,3 +88,21 @@ void PreProcessing::fillGaps(Image<uchar>& frame, int gap)
 }
 
 
+void PreProcessing::fillVerticalGaps(Image<uchar>& frame, int gap)
+{
+	int m = frame.rows, n = frame.cols, start, end;
+
+	for (int i = 0; i < n; ++i) // Scan each line
+		for (start = 0; start < m - 2; ++start) // Scan each line 
+			if (frame.at<uchar>(start, i) == 255 && frame.at<uchar>(start + 1, i) == 0)
+				//If you get to the edge of a white part, check where it ends
+				for (end = start + 2; end < m; ++end)
+					//If next white space is within "gap" pixels, fille everything in between
+					if (frame.at<uchar>(end, i) == 255 && end - start < gap)
+					{
+						fillCol(frame, i, start, end);
+						start = end - 1; //Continue scan from where stopped 
+						//will be incremented by one since its the end of the loop
+						break;
+					}
+}

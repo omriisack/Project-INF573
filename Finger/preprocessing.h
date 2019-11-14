@@ -9,14 +9,15 @@ class PreProcessing {
 	Image<uchar> difference;
     Image<uchar> canny;
     Image<Vec3b> intersectionFrame;
+	Image<Vec3b> calib;
+	Image<uchar> calibDiff;
+
 
     vector<vector<Point>> filteredContours;
 
-
-
 	Ptr<BackgroundSubtractor> bgs;
 
-    public:
+    public: //TODO Delete argument
     PreProcessing(int in_frameJump = 1) { bgs = createBackgroundSubtractorKNN(); }
 
     // Set the current Frame (suppose that this function is called every frame!)
@@ -33,7 +34,9 @@ class PreProcessing {
     // Computer the difference between the current frame and previous frame
     void frameDifferencing(uchar threshold, bool show);
 	void addContours();
-	void fillGaps(Image<uchar>& frame, int gap);
+	void fillHorizontalGaps(Image<uchar>& frame, int gap);
+	void fillVerticalGaps(Image<uchar>& frame, int gap);
+
 
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
         cv::Canny(frame, canny, threshold1, threshold2);

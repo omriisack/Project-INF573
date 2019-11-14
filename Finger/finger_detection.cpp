@@ -17,26 +17,40 @@ bool touch(Vec3f circle, Point p, float epsilon)
 }
 
 
-void convexHulls(Mat& frame, vector<vector<Point>>& contours)
+void maxAreaConvexHull(Mat& frame, vector<vector<Point>>& contours)
 {
 	int m = frame.rows, n = frame.cols;
 	vector<vector<Point>> hull(contours.size());
-
+	int max_area = -1, max_index = -1;
 
 	for (int i = 0; i < contours.size(); ++i)
 	{
-		Moments mu = moments(contours[i], false);
-
-		// get the centroid of figures.
-		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
+		
 		convexHull(Mat(contours[i]), hull[i], false);
-
-		drawContours(frame, hull, i, Scalar(0, 0, 128), 1, 8, vector<Vec4i>(), 0, Point());
-		//for (int k = 0; k < hull[i].size(); ++k)
-		//	circle(frame, hull[i][k], 4, Scalar(0, 0, 0), -1, 8, 0);
-		//circle(frame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
-		drawContours(frame, contours, 0, Scalar(128, 0, 0), 2);
 	}
+
+	for (int i = 0; i < hull.size(); i++) {
+		double area = contourArea(hull[i], false);
+		if (area > max_area) {
+			max_area = area;
+			max_index = i;
+		}
+	}
+
+	if (max_index < 0)
+		return;
+
+	Moments mu = moments(contours[max_index], false);
+
+	// get the centroid of figures.
+	Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
+
+
+	drawContours(frame, hull, max_index, Scalar(0, 0, 128), 1, 8, vector<Vec4i>(), 0, Point());
+	for (int k = 0; k < hull[max_index].size(); ++k)
+		circle(frame, hull[max_index][k], 4, Scalar(0, 0, 0), -1, 8, 0);
+	circle(frame, mc, 4, Scalar(0, 128, 0), -1, 8, 0);
+
 	
 
 	/*
@@ -83,21 +97,21 @@ int main() {
 	int frameJump = 2;
 	PreProcessing preProcessing(frameJump);
 	Image<Vec3b> frame;
-	Mat fgMask, copy;
+
 
 	while(true)
 	{
 		capture >> frame;
 		if (frame.empty())
 			break;
-
+		
 		preProcessing.setCurrentFrame(frame);
 		preProcessing.frameDifferencing(20, false);
-		preProcessing.fillGaps(preProcessing.getDifference(), 10);
+		preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
+		preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
 		preProcessing.addContours();
-		convexHulls(frame, preProcessing.getFilteredContours());
-
+		maxAreaConvexHull(frame, preProcessing.getFilteredContours());
 		imshow("filled", preProcessing.getDifference());
 		imshow("Contours", preProcessing.getIntersectionFrame());
 		imshow("Frame", frame);
