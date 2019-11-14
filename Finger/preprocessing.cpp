@@ -13,12 +13,12 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 void PreProcessing::frameDifferencing(uchar threshold, bool show) {
 	Mat copy = currentFrame.clone();
 
-	GaussianBlur(copy, copy, Size(5, 5), 30, 30);
+	GaussianBlur(copy, copy, Size(9, 9), 30, 30);
 
 	//update the background model
 	bgs->apply(copy, difference);
 
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 4);
 
     for(int i = 0; i < difference.rows; i++) {
