@@ -5,7 +5,6 @@
 #include <fstream>
 #include "image.h"
 #include "preprocessing.h"
-#include "finger_detection.h"
 
 using namespace std;
 using namespace cv;
@@ -157,7 +156,7 @@ int main() {
 		detectFingers(frame ,handConvexHull);
 
 		imshow("filled", preProcessing.getDifference());
-		imshow("Contours", preProcessing.getIntersectionFrame());
+		//imshow("Contours", preProcessing.getIntersectionFrame());
 		imshow("Convex Hull", conFrame);
 		imshow("Frame", frame);
 
