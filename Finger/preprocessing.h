@@ -9,10 +9,9 @@ class PreProcessing {
 	Image<uchar> difference;
     Image<uchar> canny;
     Image<Vec3b> intersectionFrame;
-	Image<Vec3b> calib;
-	Image<uchar> calibDiff;
-
-
+    
+    Mat accumulatedFrame;
+    
     vector<vector<Point>> filteredContours;
 
 	Ptr<BackgroundSubtractor> bgs;
@@ -32,8 +31,10 @@ class PreProcessing {
 
 	
     // Computer the difference between the current frame and previous frame
-    void frameDifferencing(uchar threshold, bool show);
-	void addContours();
+    void frameDifferencingBgSb(uchar threshold, bool show);
+    void frameDifferencingAvgRun(uchar threshold, bool show);
+	void frameThreshold(Mat frame, uchar threshold);
+    void addContours();
 	void fillHorizontalGaps(Image<uchar>& frame, int gap);
 	void fillVerticalGaps(Image<uchar>& frame, int gap);
 

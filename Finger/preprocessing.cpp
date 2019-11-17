@@ -9,28 +9,55 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 	currentFrame = frame;
 }
 
-// Computer the difference between the current frame and previous frame
-void PreProcessing::frameDifferencing(uchar threshold, bool show) {
-	Mat copy = currentFrame.clone();
+void PreProcessing::frameThreshold(Mat frame, uchar threshold) {
+	for(int i = 0; i < frame.rows; i++) {
+        for(int j = 0; j < frame.cols; j++) {
+            auto pix = frame.at<uchar>(i, j);
+            if(pix > threshold)
+				frame.at<uchar>(i, j) = 255;
+			else
+				frame.at<uchar>(i, j) = 0;
+        }
+    }
+}
 
+// Computer the difference between the current frame and previous frame
+void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
+	Mat copy = currentFrame.clone();
 	GaussianBlur(copy, copy, Size(9, 9), 30, 30);
 
 	//update the background model
 	bgs->apply(copy, difference);
 
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 4);
-
-    for(int i = 0; i < difference.rows; i++) {
-        for(int j = 0; j < difference.cols; j++) {
-            auto pix = difference.at<uchar>(i, j);
-            if(pix > threshold)
-				difference.at<uchar>(i, j) = 255;
-        }
-    }
-
+	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+    frameThreshold(difference, threshold);
     
     if (show) {
+        imshow("diff with threshold", difference);
+    }
+}
+
+// Computer the difference between the current frame and previous frame
+void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
+	auto copy = Image<Vec3b>(currentFrame.clone());
+	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
+
+	// Calculate an "avg" frame, compute the differencing on it
+	if (accumulatedFrame.empty()) {
+		copy.convertTo(accumulatedFrame, CV_32F);
+	}
+	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
+	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
+	subtract(resultAccumulatedFrame.greyImage(), copy.greyImage(), difference);
+	accumulateWeighted(copy, accumulatedFrame, 0.02);
+
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+    frameThreshold(difference, threshold);
+    
+    if (show) {
+		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
         imshow("diff with threshold", difference);
     }
 }

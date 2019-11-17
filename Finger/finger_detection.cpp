@@ -3,7 +3,6 @@
 #include <opencv2/video/background_segm.hpp>
 #include <iostream>
 #include <fstream>
-#include "image.h"
 #include "preprocessing.h"
 
 using namespace std;
@@ -146,9 +145,15 @@ int main() {
 
 		vector<Point> handConvexHull;
 		preProcessing.setCurrentFrame(frame);
-		preProcessing.frameDifferencing(20, false);
-		preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
-		preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
+		
+		// frame differencing
+		preProcessing.frameDifferencingAvgRun(5, true);
+		// preProcessing.frameDifferencingBgSb(10, true);
+		
+		// filling
+		// preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
+		// preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
+		
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
 		preProcessing.addContours();
 
