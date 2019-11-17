@@ -131,10 +131,8 @@ int main() {
 	if (!capture.open(0))
 		return 0;
 
-	int frameJump = 2;
-	PreProcessing preProcessing(frameJump);
+	PreProcessing preProcessing;
 	Image<Vec3b> frame;
-
 
 	while(true)
 	{
@@ -147,12 +145,12 @@ int main() {
 		preProcessing.setCurrentFrame(frame);
 		
 		// frame differencing
-		preProcessing.frameDifferencingAvgRun(5, true);
+		preProcessing.frameDifferencingAvgRun(25, true);
 		// preProcessing.frameDifferencingBgSb(10, true);
 		
 		// filling
-		// preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
-		// preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
+		preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
+		preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
 		
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
 		preProcessing.addContours();

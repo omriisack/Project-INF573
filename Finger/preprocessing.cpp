@@ -38,10 +38,38 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     }
 }
 
+Mat PreProcessing::matNorm(Mat mat) {
+	Mat norm = Mat::zeros(mat.rows, mat.cols, CV_8U);
+	for(int i = 0; i < mat.rows; i++) {
+        for(int j = 0; j < mat.cols; j++) {
+            Vec3b pix = mat.at<Vec3b>(i, j);
+			norm.at<uchar>(i, j) = sqrt((pix[0] * pix[0]) + (pix[1] * pix[1]) + (pix[2] * pix[2]));
+        }
+    }
+	return norm;
+}
+
+int PreProcessing::evaluateMovement(Mat frame1, Mat frame2) {
+	//Finding the standard deviations of current and previous frame.
+		Scalar prevStdDev, currentStdDev;
+		meanStdDev(frame1, Scalar(), prevStdDev);
+		meanStdDev(frame2, Scalar(), currentStdDev);
+
+		Scalar diff = currentStdDev - prevStdDev;
+		int sum = 0;
+		for (int i = 0; i < 4; i++)
+			if(diff[i] < 0)
+				sum += -diff[i];
+			else
+				sum += diff[i];
+		
+		return sum;
+}
+
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	auto copy = Image<Vec3b>(currentFrame.clone());
-	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
+	// GaussianBlur(copy, copy, Size(11, 11), 30, 30);
 
 	// Calculate an "avg" frame, compute the differencing on it
 	if (accumulatedFrame.empty()) {
@@ -50,7 +78,10 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
 	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
 	subtract(resultAccumulatedFrame.greyImage(), copy.greyImage(), difference);
-	accumulateWeighted(copy, accumulatedFrame, 0.02);
+
+	// printf("evaluateMovement=%d\n", evaluateMovement(accumulatedFrame, copy));
+	if (evaluateMovement(accumulatedFrame, copy) > 3)
+		accumulateWeighted(copy, accumulatedFrame, 0.1);
 
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);

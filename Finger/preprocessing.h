@@ -9,15 +9,15 @@ class PreProcessing {
 	Image<uchar> difference;
     Image<uchar> canny;
     Image<Vec3b> intersectionFrame;
-    
     Mat accumulatedFrame;
-    
     vector<vector<Point>> filteredContours;
-
 	Ptr<BackgroundSubtractor> bgs;
 
-    public: //TODO Delete argument
-    PreProcessing(int in_frameJump = 1) { bgs = createBackgroundSubtractorKNN(); }
+    static Mat matNorm(Mat mat);
+    static int evaluateMovement(Mat frame1, Mat frame2);
+
+    public:
+    PreProcessing() { bgs = createBackgroundSubtractorKNN(); }
 
     // Set the current Frame (suppose that this function is called every frame!)
     void setCurrentFrame(Image<Vec3b>& frame);
