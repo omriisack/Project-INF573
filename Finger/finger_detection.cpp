@@ -145,12 +145,8 @@ int main() {
 		preProcessing.setCurrentFrame(frame);
 		
 		// frame differencing
-		preProcessing.frameDifferencingAvgRun(25, true);
+		preProcessing.frameDifferencingAvgRun(100, true);
 		// preProcessing.frameDifferencingBgSb(10, true);
-		
-		// filling
-		preProcessing.fillHorizontalGaps(preProcessing.getDifference(), 10);
-		preProcessing.fillVerticalGaps(preProcessing.getDifference(), 10);
 		
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
 		preProcessing.addContours();
@@ -158,10 +154,10 @@ int main() {
 		maxAreaConvexHull(conFrame, preProcessing.getFilteredContours(), handConvexHull, true);
 		detectFingers(frame ,handConvexHull);
 
-		imshow("filled", preProcessing.getDifference());
+		//imshow("filled", preProcessing.getDifference());
 		//imshow("Contours", preProcessing.getIntersectionFrame());
-		imshow("Convex Hull", conFrame);
-		imshow("Frame", frame);
+		//imshow("Convex Hull", conFrame);
+		//imshow("Frame", frame);
 
 		handConvexHull.clear();
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 

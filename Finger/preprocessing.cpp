@@ -43,7 +43,7 @@ Mat PreProcessing::matNorm(Mat& mat) {
 	for(int i = 0; i < mat.rows; i++) {
         for(int j = 0; j < mat.cols; j++) {
             Vec3b pix = mat.at<Vec3b>(i, j);
-			norm.at<uchar>(i, j) = sqrt((pix[0] * pix[0]) + (pix[1] * pix[1]) + (pix[2] * pix[2]));
+			norm.at<uchar>(i, j) = cv::norm(pix);
         }
     }
 	return norm;
@@ -68,8 +68,8 @@ int PreProcessing::evaluateMovement(Mat frame1, Mat frame2) {
 
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
-	auto copy = Image<Vec3b>(currentFrame.clone());
-	// GaussianBlur(copy, copy, Size(11, 11), 30, 30);
+	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
+	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
 
 	// Calculate an "avg" frame, compute the differencing on it
 	if (accumulatedFrame.empty()) {
@@ -78,21 +78,25 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
 	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
 
+	/*
 	Mat LabResultAccumulatedFrame;
 	Mat LabCopy;
 	cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
 	cvtColor(copy, LabCopy, COLOR_BGR2Lab);
+	*/
 
-	Mat diff;
-	absdiff(LabResultAccumulatedFrame, LabCopy, diff);
-
-	if (evaluateMovement(accumulatedFrame, copy) > 2)
-		accumulateWeighted(copy, accumulatedFrame, 0.01);
+	absdiff(resultAccumulatedFrame, copy, diff);
+	float a = evaluateMovement(accumulatedFrame, copy);
+	accumulateWeighted(copy, accumulatedFrame, 0.01 * sqrt(a));
 	
 	difference = Image<uchar>(matNorm(diff));
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 4);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-    frameThreshold(difference, threshold);
+	multiply(difference, 5, difference);
+
+	imshow("difference", difference);
+	frameThreshold(difference, threshold);
     
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
