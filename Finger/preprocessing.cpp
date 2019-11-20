@@ -38,7 +38,7 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     }
 }
 
-Mat PreProcessing::matNorm(Mat mat) {
+Mat PreProcessing::matNorm(Mat& mat) {
 	Mat norm = Mat::zeros(mat.rows, mat.cols, CV_8U);
 	for(int i = 0; i < mat.rows; i++) {
         for(int j = 0; j < mat.cols; j++) {
@@ -77,12 +77,19 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	}
 	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
 	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
-	subtract(resultAccumulatedFrame.greyImage(), copy.greyImage(), difference);
 
-	// printf("evaluateMovement=%d\n", evaluateMovement(accumulatedFrame, copy));
-	if (evaluateMovement(accumulatedFrame, copy) > 3)
-		accumulateWeighted(copy, accumulatedFrame, 0.1);
+	Mat LabResultAccumulatedFrame;
+	Mat LabCopy;
+	cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
+	cvtColor(copy, LabCopy, COLOR_BGR2Lab);
 
+	Mat diff;
+	absdiff(LabResultAccumulatedFrame, LabCopy, diff);
+
+	if (evaluateMovement(accumulatedFrame, copy) > 2)
+		accumulateWeighted(copy, accumulatedFrame, 0.01);
+	
+	difference = Image<uchar>(matNorm(diff));
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
     frameThreshold(difference, threshold);

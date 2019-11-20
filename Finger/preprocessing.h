@@ -13,7 +13,7 @@ class PreProcessing {
     vector<vector<Point>> filteredContours;
 	Ptr<BackgroundSubtractor> bgs;
 
-    static Mat matNorm(Mat mat);
+    static Mat matNorm(Mat& mat);
     static int evaluateMovement(Mat frame1, Mat frame2);
 
     public:
