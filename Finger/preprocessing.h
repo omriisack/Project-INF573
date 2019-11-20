@@ -37,7 +37,7 @@ class PreProcessing {
     void addContours();
 	void fillHorizontalGaps(Image<uchar>& frame, int gap);
 	void fillVerticalGaps(Image<uchar>& frame, int gap);
-
+    void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
 
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
         cv::Canny(frame, canny, threshold1, threshold2);

@@ -1,3 +1,4 @@
+#include <queue>
 #include "preprocessing.h"
 
 using namespace std;
@@ -20,6 +21,43 @@ void PreProcessing::frameThreshold(Mat frame, uchar threshold) {
         }
     }
 }
+
+void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2) {
+	queue<Point> Q;
+
+	// Find seeds
+	for (int i = 0; i < frame.rows; i++) {
+		for (int j = 0; j < frame.cols; j++) {
+			if (frame.at<uchar>(i, j) > t1) {
+				Q.push(Point(j, i));
+			}
+		}
+	}
+
+	// Propagate seeds
+	res = Image<uchar>(Mat::zeros(frame.rows, frame.cols, CV_8U)) ;
+	while (!Q.empty()) {
+		int i = Q.front().y, j = Q.front().x;
+		Q.pop();
+
+		// Check if already visited this pixel
+		if (res.at<uchar>(i, j) == 255)
+			continue;
+
+		res.at<uchar>(i, j) = 255;
+		
+		// Visit pixels around
+		for (int k = -1; k < 2; k++) {
+			for (int l = -1; l < 2; l++){
+				if ((k == 0 && l == 0) || i+k < 0 || j+l < 0 || i+k >= res.rows || j+l >= res.cols)
+					continue;
+				else if (res.at<uchar>(i+k, j+l) != 255 && res.at<uchar>(i+k, j+l) > t2)
+					Q.push(Point(j+l, i+k));
+			}
+		}
+	}
+}
+
 
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
@@ -78,12 +116,10 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
 	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
 
-	/*
 	Mat LabResultAccumulatedFrame;
 	Mat LabCopy;
 	cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
 	cvtColor(copy, LabCopy, COLOR_BGR2Lab);
-	*/
 
 	absdiff(resultAccumulatedFrame, copy, diff);
 	float a = evaluateMovement(accumulatedFrame, copy);
@@ -96,11 +132,14 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 	multiply(difference, 5, difference);
 
 	imshow("difference", difference);
-	frameThreshold(difference, threshold);
-    
+	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
+	// frameThreshold(difference, threshold);
+	frameThresholdSeeds(difference, thresholded, threshold*2, threshold);
+	difference = thresholded;
+
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
-        imshow("diff with threshold", difference);
+        imshow("diff with threshold", thresholded);
     }
 }
 
