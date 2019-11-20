@@ -10,7 +10,7 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 	currentFrame = frame;
 }
 
-void PreProcessing::frameThreshold(Mat frame, uchar threshold) {
+void PreProcessing::frameThreshold(Mat& frame, uchar threshold) {
 	for(int i = 0; i < frame.rows; i++) {
         for(int j = 0; j < frame.cols; j++) {
             auto pix = frame.at<uchar>(i, j);
@@ -22,13 +22,13 @@ void PreProcessing::frameThreshold(Mat frame, uchar threshold) {
     }
 }
 
-void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2) {
+void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int hight, int lowt) {
 	queue<Point> Q;
 
 	// Find seeds
 	for (int i = 0; i < frame.rows; i++) {
 		for (int j = 0; j < frame.cols; j++) {
-			if (frame.at<uchar>(i, j) > t1) {
+			if (frame.at<uchar>(i, j) >= hight) {
 				Q.push(Point(j, i));
 			}
 		}
@@ -51,7 +51,7 @@ void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>&
 			for (int l = -1; l < 2; l++){
 				if ((k == 0 && l == 0) || i+k < 0 || j+l < 0 || i+k >= res.rows || j+l >= res.cols)
 					continue;
-				else if (res.at<uchar>(i+k, j+l) != 255 && res.at<uchar>(i+k, j+l) > t2)
+				else if (res.at<uchar>(i+k, j+l) != 255 && res.at<uchar>(i+k, j+l) >= lowt)
 					Q.push(Point(j+l, i+k));
 			}
 		}
@@ -73,6 +73,7 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     
     if (show) {
         imshow("diff with threshold", difference);
+
     }
 }
 
@@ -87,7 +88,7 @@ Mat PreProcessing::matNorm(Mat& mat) {
 	return norm;
 }
 
-int PreProcessing::evaluateMovement(Mat frame1, Mat frame2) {
+int PreProcessing::evaluateMovement(Mat& frame1, Mat& frame2) {
 	//Finding the standard deviations of current and previous frame.
 		Scalar prevStdDev, currentStdDev;
 		meanStdDev(frame1, Scalar(), prevStdDev);
@@ -105,7 +106,7 @@ int PreProcessing::evaluateMovement(Mat frame1, Mat frame2) {
 }
 
 // Computer the difference between the current frame and previous frame
-void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
+void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
 	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
 	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
 
@@ -123,18 +124,18 @@ void PreProcessing::frameDifferencingAvgRun(uchar threshold, bool show) {
 
 	absdiff(resultAccumulatedFrame, copy, diff);
 	float a = evaluateMovement(accumulatedFrame, copy);
-	accumulateWeighted(copy, accumulatedFrame, 0.01 * sqrt(a));
+	accumulateWeighted(copy, accumulatedFrame, 0.005 * sqrt(a));
 	
 	difference = Image<uchar>(matNorm(diff));
 
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 4);
-	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-	multiply(difference, 5, difference);
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
+	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
+	multiply(difference, 10, difference);
 
 	imshow("difference", difference);
 	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
 	// frameThreshold(difference, threshold);
-	frameThresholdSeeds(difference, thresholded, threshold*2, threshold);
+	frameThresholdSeeds(difference, thresholded, hight, lowt);
 	difference = thresholded;
 
     if (show) {

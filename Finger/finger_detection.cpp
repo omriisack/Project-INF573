@@ -145,7 +145,7 @@ int main() {
 		preProcessing.setCurrentFrame(frame);
 		
 		// frame differencing
-		preProcessing.frameDifferencingAvgRun(100, true);
+		preProcessing.frameDifferencingAvgRun(200, 100, true);
 		// preProcessing.frameDifferencingBgSb(10, true);
 		
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 100);
@@ -156,7 +156,7 @@ int main() {
 
 		//imshow("filled", preProcessing.getDifference());
 		//imshow("Contours", preProcessing.getIntersectionFrame());
-		//imshow("Convex Hull", conFrame);
+		imshow("Convex Hull", conFrame);
 		//imshow("Frame", frame);
 
 		handConvexHull.clear();
