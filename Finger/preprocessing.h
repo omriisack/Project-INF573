@@ -8,7 +8,7 @@ class PreProcessing {
     Image<Vec3b> currentFrame;
 	Image<uchar> difference;
     Image<uchar> canny;
-    Image<Vec3b> intersectionFrame;
+	Image<Vec3b> filteredByDifference;
     Mat accumulatedFrame;
     vector<vector<Point>> filteredContours;
 	Ptr<BackgroundSubtractor> bgs;
@@ -26,8 +26,9 @@ class PreProcessing {
     Image<Vec3b>& getCurrentFrame() { return currentFrame; }
 	Image<uchar>& getDifference() { return difference; }
     Image<uchar>& getCanny() { return canny; }
-    Image<Vec3b>& getIntersectionFrame() { return intersectionFrame; }
     vector<vector<Point>>& getFilteredContours() { return filteredContours; }
+	Image<Vec3b>& getFilteredByDifference() { return filteredByDifference; }
+
 
 	
     // Computer the difference between the current frame and previous frame
@@ -35,9 +36,9 @@ class PreProcessing {
     void frameDifferencingAvgRun(uchar hight, uchar lowt, bool show);
 	void frameThreshold(Mat& frame, uchar threshold);
     void addContours();
-	void fillHorizontalGaps(Image<uchar>& frame, int gap);
-	void fillVerticalGaps(Image<uchar>& frame, int gap);
     void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
+	void filterByMask(const Image<Vec3b>& frame, const Image<uchar>& mask, Image<Vec3b>& res);
+	void filterSkinColor(const Image<Vec3b>& input, Image<uchar>& output);
 
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
         cv::Canny(frame, canny, threshold1, threshold2);

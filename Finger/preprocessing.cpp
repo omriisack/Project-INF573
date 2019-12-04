@@ -59,6 +59,19 @@ void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>&
 }
 
 
+void PreProcessing::filterByMask(const Image<Vec3b>& frame, const Image<uchar>& mask, Image<Vec3b>& res)
+{
+	
+	res = Image<Vec3b>(Mat::zeros(difference.rows, difference.cols, CV_8UC3));
+
+	for (int i = 0; i < frame.rows; ++i) 
+		for (int j = 0; j < frame.cols; ++j) 
+			if (mask.at<uchar>(i, j)) 
+				res.at<Vec3b>(i, j) = frame.at<Vec3b>(i, j);
+				
+}
+
+
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
 	Mat copy = currentFrame.clone();
@@ -67,8 +80,8 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
 	//update the background model
 	bgs->apply(copy, difference);
 
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+	erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+	dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
     frameThreshold(difference, threshold);
     
     if (show) {
@@ -79,8 +92,8 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
 
 Mat PreProcessing::matNorm(Mat& mat) {
 	Mat norm = Mat::zeros(mat.rows, mat.cols, CV_8U);
-	for(int i = 0; i < mat.rows; i++) {
-        for(int j = 0; j < mat.cols; j++) {
+	for(int i = 0; i < mat.rows; ++i) {
+        for(int j = 0; j < mat.cols; ++j) {
             Vec3b pix = mat.at<Vec3b>(i, j);
 			norm.at<uchar>(i, j) = cv::norm(pix);
         }
@@ -101,9 +114,9 @@ int PreProcessing::evaluateMovement(Mat& frame1, Mat& frame2) {
 				sum += -diff[i];
 			else
 				sum += diff[i];
-		
 		return sum;
 }
+
 
 // Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
@@ -124,19 +137,26 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) 
 
 	absdiff(resultAccumulatedFrame, copy, diff);
 	float a = evaluateMovement(accumulatedFrame, copy);
-	accumulateWeighted(copy, accumulatedFrame, 0.005 * sqrt(a));
+	accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
 	
 	difference = Image<uchar>(matNorm(diff));
 
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
-	multiply(difference, 10, difference);
+	multiply(difference, difference, difference);
+	multiply(difference, 0.8, difference);
+
 
 	imshow("difference", difference);
 	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
+
 	// frameThreshold(difference, threshold);
 	frameThresholdSeeds(difference, thresholded, hight, lowt);
+	filterByMask(Image<Vec3b>(currentFrame), thresholded, filteredByDifference);
+
 	difference = thresholded;
+	imshow("filtererd", filteredByDifference);
+
 
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
@@ -147,71 +167,22 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) 
 void PreProcessing::addContours()
 {
 	int m = currentFrame.rows, n = currentFrame.cols;
-
 	vector<vector<Point>> contours;
 	vector<Vec4i> hierarchy;
 	vector<Vec3f> circles;
-	intersectionFrame = Image<Vec3b>(currentFrame.clone());
-
 	findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
 	filteredContours = contours;
-	drawContours(intersectionFrame, contours, -1, Scalar(128, 0, 0), 2);
 }
 
 
-void fillRow(Image<uchar>& frame, int row, int first, int last)
+void PreProcessing::filterSkinColor(const Image<Vec3b>& input, Image<uchar>& output)
 {
-	if (first < last)
-	{
-		for (int i = first; i < last; ++i)
-			frame.at<uchar>(row, i) = 255;
-	}
+	Image<Vec3b> inputHLS;
+	cvtColor(input, inputHLS, COLOR_BGR2HLS);
+	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.05 * 255, 0.05 * 255);
+	inRange(inputHLS, lower, upper, output);
+	/*erode(output, output, cv::Mat(), cv::Point(-1, -1), 2);
+	dilate(output, output, cv::Mat(), cv::Point(-1, -1), 2);*/
+	imshow("color filtering", output);
 }
 
-void fillCol(Image<uchar>& frame, int col, int first, int last)
-{
-	if (first < last)
-	{
-		for (int i = first; i < last; ++i)
-			frame.at<uchar>(i, col) = 255;
-	}
-}
-
-void PreProcessing::fillHorizontalGaps(Image<uchar>& frame, int gap)
-{
-	int m = frame.rows, n = frame.cols, start, end;
-
-	for (int i = 0; i < m; ++i) // Scan each line
-		for (start = 0; start < n - 2; ++start) // Scan each line 
-			if (frame.at<uchar>(i, start) == 255 && frame.at<uchar>(i, start + 1) == 0)
-				//If you get to the edge of a white part, check where it ends
-				for (end = start + 2; end < n; ++end)
-					//If next white space is within "gap" pixels, fille everything in between
-					if (frame.at<uchar>(i, end) == 255 && end - start < gap)
-					{
-						fillRow(frame, i, start, end);
-						start = end - 1; //Continue scan from where stopped 
-						//will be incremented by one since its the end of the loop
-						break;
-					}	
-}
-
-
-void PreProcessing::fillVerticalGaps(Image<uchar>& frame, int gap)
-{
-	int m = frame.rows, n = frame.cols, start, end;
-
-	for (int i = 0; i < n; ++i) // Scan each line
-		for (start = 0; start < m - 2; ++start) // Scan each line 
-			if (frame.at<uchar>(start, i) == 255 && frame.at<uchar>(start + 1, i) == 0)
-				//If you get to the edge of a white part, check where it ends
-				for (end = start + 2; end < m; ++end)
-					//If next white space is within "gap" pixels, fille everything in between
-					if (frame.at<uchar>(end, i) == 255 && end - start < gap)
-					{
-						fillCol(frame, i, start, end);
-						start = end - 1; //Continue scan from where stopped 
-						//will be incremented by one since its the end of the loop
-						break;
-					}
-}
