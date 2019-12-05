@@ -26,7 +26,7 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
 
 void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
 	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
-	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
+	GaussianBlur(copy, copy, Size(5, 5), 30, 30);
 
 	// Calculate an "avg" frame, compute the differencing on it
 	if (accumulatedFrame.empty()) {
@@ -40,18 +40,20 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) 
 	// Mat LabCopy;
 	// cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
 	// cvtColor(copy, LabCopy, COLOR_BGR2Lab);
+	// absdiff(LabResultAccumulatedFrame, LabCopy, diff);
 
 	absdiff(resultAccumulatedFrame, copy, diff);
 	// float a = evaluateMovement(accumulatedFrame, copy);
 	// accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
 	accumulateWeighted(copy, accumulatedFrame, 0.05);
-	
-	difference = Image<uchar>(matNorm(diff));
+
+	cvtColor(diff, difference, COLOR_BGR2GRAY);
+	applyNormalization(difference);
+	// difference = Image<uchar>(matNorm(diff));
 
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
 	multiply(difference, difference, difference);
-	multiply(difference, 0.8, difference);
 
 	if (show)
 		imshow("difference", difference);

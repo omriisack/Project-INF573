@@ -149,7 +149,7 @@ int main() {
 		preProcessing.setCurrentFrame(frame);
 
 		// frame differencing
-		preProcessing.frameDifferencingAvgRun(170, 40, false);
+		preProcessing.frameDifferencingAvgRun(150, 20, true);
 		// mask
 		preProcessing.filterByMask(preProcessing.getDifference(), true);
 		// filter the skin color
