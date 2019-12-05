@@ -4,13 +4,10 @@
 using namespace std;
 using namespace cv;
 
-// Set the current Frame
-// Suppose that this function is called every frame!
 void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 	currentFrame = frame;
 }
 
-// Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
 	Mat copy = currentFrame.clone();
 	GaussianBlur(copy, copy, Size(9, 9), 30, 30);
@@ -27,7 +24,6 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     }
 }
 
-// Computer the difference between the current frame and previous frame
 void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
 	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
 	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
@@ -140,15 +136,6 @@ void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>&
 			}
 		}
 	}
-}
-
-void PreProcessing::addContours() {
-	int m = currentFrame.rows, n = currentFrame.cols;
-	vector<vector<Point>> contours;
-	vector<Vec4i> hierarchy;
-	vector<Vec3f> circles;
-	findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
-	filteredContours = contours;
 }
 
 Mat PreProcessing::matNorm(Mat& mat) {

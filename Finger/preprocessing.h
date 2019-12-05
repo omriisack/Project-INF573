@@ -9,11 +9,14 @@ class PreProcessing {
 	Image<uchar> difference;       // After differencing operation
 	Image<Vec3b> filteredByMask;   // Original frame filtered by a given mask
     Image<uchar> filteredByColor;  // Given frame filtered by color range
+    
     Image<uchar> canny;
+    vector<vector<Point>> contours;
+    
     Mat accumulatedFrame;
-    vector<vector<Point>> filteredContours;
 	Ptr<BackgroundSubtractor> bgs;
 
+    // Utils
     static Mat matNorm(Mat& mat);
     static int evaluateMovement(Mat& frame1, Mat& frame2);
 
@@ -26,9 +29,10 @@ class PreProcessing {
     // Get functions
     Image<Vec3b>& getCurrentFrame() { return currentFrame; }
 	Image<uchar>& getDifference() { return difference; }
-    Image<uchar>& getCanny() { return canny; }
-    vector<vector<Point>>& getFilteredContours() { return filteredContours; }
 	Image<Vec3b>& getFilteredByMask() { return filteredByMask; }
+	Image<uchar>& getFilteredByColor() { return filteredByColor; }
+    Image<uchar>& getCanny() { return canny; }
+    vector<vector<Point>>& getContours() { return contours; }
 
     // Frame Differencing
     void frameDifferencingBgSb(uchar threshold, bool show);
@@ -41,9 +45,11 @@ class PreProcessing {
     void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
     
     // Other operations
-    void addContours();
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
         cv::Canny(frame, canny, threshold1, threshold2);
+        contours.clear();
+        vector<Vec4i> hierarchy;
+	    findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
     }
     static void applyGaussianBlur(Mat& frame, Size2i size, double sigmaX, double sigmaY) {
         cv::GaussianBlur(frame, frame, size, sigmaX, sigmaY);

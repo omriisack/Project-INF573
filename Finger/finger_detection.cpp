@@ -76,6 +76,9 @@ struct Dist
 
 void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull)
 {
+	if (handContour.empty() || handConvexHull.empty())
+		return;
+
 	Moments mu = moments(handConvexHull, false);
 
 	// get the centroid of figures.
@@ -86,49 +89,40 @@ void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	vector<Point> defectPoints;
 
 	partition(handConvexHull, labels, Dist(15));
-
 	
+	// Calculate avg points of each label
 	auto max = max_element(begin(labels), end(labels));
-	if (!labels.empty() && !handConvexHull.empty() && !handContour.empty())
-	{
-		
-		vector<Point> avgPoints(*max + 1, Point(0,0)), filteredConvextPoints;
-		vector<int> sizeLabels(*max + 1, 0);
-		
-		for (int i = 0; i < labels.size(); i++) {
-			avgPoints[labels[i]] += handConvexHull[i];
-			sizeLabels[labels[i]] += 1;
-		}
-		
-		for (int i = 0; i < avgPoints.size(); i++) {
-			avgPoints[i] /= sizeLabels[i];
-		}
-
-		for (int i = 0; i < avgPoints.size(); i++) {
-			if (avgPoints[i].y < mc.y)
-				filteredConvextPoints.push_back(avgPoints[i]);
-		}
-
-
-		for (int k = 0; k < avgPoints.size(); ++k)
-		{
-			circle(frame, filteredConvextPoints[k], 4, Scalar(0, 255, 0), -1, 8, 0);
-		}
-			
-		cv::convexHull(handContour, intHull, false, false);
-
-		cv::convexityDefects(handContour, intHull, defects);
-
-		for (int i = 0; i < defects.size(); i++)
-		{
-			//Get only distant defects (area between fingers) and above centroid
-			if((defects[i].val[3] > 250) && (handContour[defects[i].val[2]].y < mc.y))
-				defectPoints.push_back(handContour[defects[i].val[2]]);
-		}
-		
-		for (int k = 0; k < defectPoints.size(); ++k)
-			circle(frame, defectPoints[k], 4, Scalar(0, 0, 255), -1, 8, 0);
+	vector<Point> avgPoints(*max + 1, Point(0,0));
+	vector<int> sizeLabels(*max + 1, 0);
+	for (int i = 0; i < labels.size(); i++) {
+		avgPoints[labels[i]] += handConvexHull[i];
+		sizeLabels[labels[i]] += 1;
 	}
+	for (int i = 0; i < avgPoints.size(); i++) {
+		avgPoints[i] /= sizeLabels[i];
+	}
+	// Filter points under the centroid
+	vector<Point> filteredConvexPoints;
+	for (int i = 0; i < avgPoints.size(); i++) {
+		if (avgPoints[i].y < mc.y)
+			filteredConvexPoints.push_back(avgPoints[i]);
+	}
+	
+	// Find defect points
+	cv::convexHull(handContour, intHull, false, false);
+	cv::convexityDefects(handContour, intHull, defects);
+	for (int i = 0; i < defects.size(); i++) {
+		//Get only distant defects (area between fingers) and above centroid
+		if((defects[i].val[3] > 250) && (handContour[defects[i].val[2]].y < mc.y))
+			defectPoints.push_back(handContour[defects[i].val[2]]);
+	}
+
+	// Draw circle for the points found
+	for (int i = 0; i < filteredConvexPoints.size(); i++)
+		circle(frame, filteredConvexPoints[i], 4, Scalar(0, 255, 0), -1, 8, 0);
+
+	for (int i = 0; i < defectPoints.size(); i++)
+		circle(frame, defectPoints[i], 4, Scalar(0, 0, 255), -1, 8, 0);
 	
 }
 
@@ -155,23 +149,20 @@ int main() {
 		preProcessing.setCurrentFrame(frame);
 
 		// frame differencing
-		preProcessing.frameDifferencingAvgRun(170, 40, true);
+		preProcessing.frameDifferencingAvgRun(170, 40, false);
 		// mask
 		preProcessing.filterByMask(preProcessing.getDifference(), true);
 		// filter the skin color
 		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), true);
+		// canny
+		preProcessing.applyCanny(preProcessing.getFilteredByMask(), 50, 100);
+		// convex hull
+		maxAreaConvexHull(conFrame, preProcessing.getContours(), handContour, handConvexHull, true);
+		detectFingers(pointed, handContour, handConvexHull);
 
-		// preProcessing.applyCanny(colorFiltered, 50, 100);
-		// preProcessing.addContours();
-		
-		// maxAreaConvexHull(conFrame, preProcessing.getFilteredContours(), handContour, handConvexHull, true);
-		
-		// detectFingers(pointed, handContour, handConvexHull);
+		imshow("Convex Hull", conFrame);
+		imshow("Pointed", pointed);
 
-		// imshow("Convex Hull", conFrame);
-		// imshow("Pointed", pointed);
-
-		handConvexHull.clear();
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
 	
