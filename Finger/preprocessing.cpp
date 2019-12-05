@@ -24,7 +24,7 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     }
 }
 
-void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
+void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labColor, bool show) {
 	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
 	GaussianBlur(copy, copy, Size(5, 5), 30, 30);
 
@@ -35,25 +35,27 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) 
 	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
 	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
 
-	// Use Lab colors ?
-	// Mat LabResultAccumulatedFrame;
-	// Mat LabCopy;
-	// cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
-	// cvtColor(copy, LabCopy, COLOR_BGR2Lab);
-	// absdiff(LabResultAccumulatedFrame, LabCopy, diff);
+	if (labColor) {
+		// Use Lab colors
+		Mat LabResultAccumulatedFrame;
+		Mat LabCopy;
+		cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
+		cvtColor(copy, LabCopy, COLOR_BGR2Lab);
+		absdiff(LabResultAccumulatedFrame, LabCopy, diff);
+		difference = Image<uchar>(matNorm(diff));
+	} else {
+		absdiff(resultAccumulatedFrame, copy, diff);
+		cvtColor(diff, difference, COLOR_BGR2GRAY);
+	}
 
-	absdiff(resultAccumulatedFrame, copy, diff);
 	// float a = evaluateMovement(accumulatedFrame, copy);
 	// accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
 	accumulateWeighted(copy, accumulatedFrame, 0.05);
 
-	cvtColor(diff, difference, COLOR_BGR2GRAY);
-	applyNormalization(difference);
-	// difference = Image<uchar>(matNorm(diff));
-
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
-	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
-	multiply(difference, difference, difference);
+	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+
+	applyMeanDenoise(difference);
 
 	if (show)
 		imshow("difference", difference);
@@ -133,7 +135,7 @@ void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>&
 			for (int l = -1; l < 2; l++){
 				if ((k == 0 && l == 0) || i+k < 0 || j+l < 0 || i+k >= res.rows || j+l >= res.cols)
 					continue;
-				else if (res.at<uchar>(i+k, j+l) != 255 && res.at<uchar>(i+k, j+l) >= lowt)
+				else if (res.at<uchar>(i+k, j+l) != 255 && frame.at<uchar>(i+k, j+l) >= lowt)
 					Q.push(Point(j+l, i+k));
 			}
 		}

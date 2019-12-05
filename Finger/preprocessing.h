@@ -36,7 +36,7 @@ class PreProcessing {
 
     // Frame Differencing
     void frameDifferencingBgSb(uchar threshold, bool show);
-    void frameDifferencingAvgRun(uchar hight, uchar lowt, bool show);
+    void frameDifferencingAvgRun(uchar hight, uchar lowt, bool labColor, bool show);
 	
     // Filters
 	void filterByMask(const Image<uchar>& mask, bool show);
@@ -45,16 +45,16 @@ class PreProcessing {
     void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
     
     // Other operations
-    void applyNormalization(Mat& frame) {
+    void applyMeanDenoise(Mat& frame) {
         cv::Scalar mean, stddev;
         cv::meanStdDev(frame, mean, stddev);
         for(int i = 0; i < frame.rows; i++) {
             for(int j = 0; j < frame.cols; j++) {
                 auto pix = frame.at<uchar>(i, j);
                 if(pix < 2*mean[0])
-                    frame.at<uchar>(i, j) = 0;
+                    frame.at<uchar>(i, j) = pix/stddev[0];
                 else
-                    frame.at<uchar>(i, j) = (pix - mean[0]);
+                    frame.at<uchar>(i, j) = abs(pix - mean[0]);
             }
         }
     }
