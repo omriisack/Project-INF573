@@ -10,6 +10,90 @@ void PreProcessing::setCurrentFrame(Image<Vec3b>& frame) {
 	currentFrame = frame;
 }
 
+// Computer the difference between the current frame and previous frame
+void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
+	Mat copy = currentFrame.clone();
+	GaussianBlur(copy, copy, Size(9, 9), 30, 30);
+
+	//update the background model
+	bgs->apply(copy, difference);
+
+	erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+	dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+    frameThreshold(difference, threshold);
+    
+    if (show) {
+        imshow("diff with threshold", difference);
+    }
+}
+
+// Computer the difference between the current frame and previous frame
+void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
+	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
+	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
+
+	// Calculate an "avg" frame, compute the differencing on it
+	if (accumulatedFrame.empty()) {
+		copy.convertTo(accumulatedFrame, CV_32F);
+	}
+	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
+	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
+
+	// Use Lab colors ?
+	// Mat LabResultAccumulatedFrame;
+	// Mat LabCopy;
+	// cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
+	// cvtColor(copy, LabCopy, COLOR_BGR2Lab);
+
+	absdiff(resultAccumulatedFrame, copy, diff);
+	// float a = evaluateMovement(accumulatedFrame, copy);
+	// accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
+	accumulateWeighted(copy, accumulatedFrame, 0.05);
+	
+	difference = Image<uchar>(matNorm(diff));
+
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
+	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
+	multiply(difference, difference, difference);
+	multiply(difference, 0.8, difference);
+
+	if (show)
+		imshow("difference", difference);
+
+	// Threshold the difference
+	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
+	frameThresholdSeeds(difference, thresholded, hight, lowt);
+	difference = thresholded;
+
+    if (show) {
+		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
+        imshow("diff with threshold", thresholded);
+    }
+}
+
+void PreProcessing::filterByMask(const Image<uchar>& mask, bool show) {
+	filteredByMask = Image<Vec3b>(Mat::zeros(mask.rows, mask.cols, CV_8UC3));
+
+	for (int i = 0; i < currentFrame.rows; ++i) 
+		for (int j = 0; j < currentFrame.cols; ++j) 
+			if (mask.at<uchar>(i, j)) 
+				filteredByMask.at<Vec3b>(i, j) = currentFrame.at<Vec3b>(i, j);
+	
+	if (show)
+		imshow("filter by mask original frame", filteredByMask);
+}
+
+void PreProcessing::filterSkinColor(const Image<Vec3b>& input, bool show) {
+	Image<Vec3b> inputHLS;
+	cvtColor(input, inputHLS, COLOR_BGR2HLS);
+	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.05 * 255, 0.05 * 255);
+	inRange(inputHLS, lower, upper, filteredByColor);
+	/*erode(output, output, cv::Mat(), cv::Point(-1, -1), 2);
+	dilate(output, output, cv::Mat(), cv::Point(-1, -1), 2);*/
+	if (show)
+		imshow("filter by color", filteredByColor);
+}
+
 void PreProcessing::frameThreshold(Mat& frame, uchar threshold) {
 	for(int i = 0; i < frame.rows; i++) {
         for(int j = 0; j < frame.cols; j++) {
@@ -58,36 +142,13 @@ void PreProcessing::frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>&
 	}
 }
 
-
-void PreProcessing::filterByMask(const Image<Vec3b>& frame, const Image<uchar>& mask, Image<Vec3b>& res)
-{
-	
-	res = Image<Vec3b>(Mat::zeros(difference.rows, difference.cols, CV_8UC3));
-
-	for (int i = 0; i < frame.rows; ++i) 
-		for (int j = 0; j < frame.cols; ++j) 
-			if (mask.at<uchar>(i, j)) 
-				res.at<Vec3b>(i, j) = frame.at<Vec3b>(i, j);
-				
-}
-
-
-// Computer the difference between the current frame and previous frame
-void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
-	Mat copy = currentFrame.clone();
-	GaussianBlur(copy, copy, Size(9, 9), 30, 30);
-
-	//update the background model
-	bgs->apply(copy, difference);
-
-	erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-	dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
-    frameThreshold(difference, threshold);
-    
-    if (show) {
-        imshow("diff with threshold", difference);
-
-    }
+void PreProcessing::addContours() {
+	int m = currentFrame.rows, n = currentFrame.cols;
+	vector<vector<Point>> contours;
+	vector<Vec4i> hierarchy;
+	vector<Vec3f> circles;
+	findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
+	filteredContours = contours;
 }
 
 Mat PreProcessing::matNorm(Mat& mat) {
@@ -116,73 +177,3 @@ int PreProcessing::evaluateMovement(Mat& frame1, Mat& frame2) {
 				sum += diff[i];
 		return sum;
 }
-
-
-// Computer the difference between the current frame and previous frame
-void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool show) {
-	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
-	GaussianBlur(copy, copy, Size(11, 11), 30, 30);
-
-	// Calculate an "avg" frame, compute the differencing on it
-	if (accumulatedFrame.empty()) {
-		copy.convertTo(accumulatedFrame, CV_32F);
-	}
-	Image<Vec3b> resultAccumulatedFrame = Image<Vec3b>(Mat::zeros(currentFrame.rows, currentFrame.cols, CV_32FC3));
-	convertScaleAbs(accumulatedFrame, resultAccumulatedFrame);
-
-	Mat LabResultAccumulatedFrame;
-	Mat LabCopy;
-	cvtColor(resultAccumulatedFrame, LabResultAccumulatedFrame, COLOR_BGR2Lab);
-	cvtColor(copy, LabCopy, COLOR_BGR2Lab);
-
-	absdiff(resultAccumulatedFrame, copy, diff);
-	float a = evaluateMovement(accumulatedFrame, copy);
-	accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
-	
-	difference = Image<uchar>(matNorm(diff));
-
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
-	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 1);
-	multiply(difference, difference, difference);
-	multiply(difference, 0.8, difference);
-
-
-	imshow("difference", difference);
-	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
-
-	// frameThreshold(difference, threshold);
-	frameThresholdSeeds(difference, thresholded, hight, lowt);
-	filterByMask(Image<Vec3b>(currentFrame), thresholded, filteredByDifference);
-
-	difference = thresholded;
-	imshow("filtererd", filteredByDifference);
-
-
-    if (show) {
-		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
-        imshow("diff with threshold", thresholded);
-    }
-}
-
-void PreProcessing::addContours()
-{
-	int m = currentFrame.rows, n = currentFrame.cols;
-	vector<vector<Point>> contours;
-	vector<Vec4i> hierarchy;
-	vector<Vec3f> circles;
-	findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
-	filteredContours = contours;
-}
-
-
-void PreProcessing::filterSkinColor(const Image<Vec3b>& input, Image<uchar>& output)
-{
-	Image<Vec3b> inputHLS;
-	cvtColor(input, inputHLS, COLOR_BGR2HLS);
-	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.05 * 255, 0.05 * 255);
-	inRange(inputHLS, lower, upper, output);
-	/*erode(output, output, cv::Mat(), cv::Point(-1, -1), 2);
-	dilate(output, output, cv::Mat(), cv::Point(-1, -1), 2);*/
-	imshow("color filtering", output);
-}
-

@@ -153,23 +153,23 @@ int main() {
 		vector<Point> handContour;
 
 		preProcessing.setCurrentFrame(frame);
-		
+
 		// frame differencing
 		preProcessing.frameDifferencingAvgRun(170, 40, true);
-		// preProcessing.frameDifferencingBgSb(10, true);
-		
-		Image<uchar> colorFiltered;
-		preProcessing.filterSkinColor(preProcessing.getFilteredByDifference(), colorFiltered);
+		// mask
+		preProcessing.filterByMask(preProcessing.getDifference(), true);
+		// filter the skin color
+		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), true);
 
-		preProcessing.applyCanny(colorFiltered, 50, 100);
-		preProcessing.addContours();
+		// preProcessing.applyCanny(colorFiltered, 50, 100);
+		// preProcessing.addContours();
 		
-		maxAreaConvexHull(conFrame, preProcessing.getFilteredContours(), handContour, handConvexHull, true);
+		// maxAreaConvexHull(conFrame, preProcessing.getFilteredContours(), handContour, handConvexHull, true);
 		
-		//detectFingers(pointed, handContour, handConvexHull);
+		// detectFingers(pointed, handContour, handConvexHull);
 
-		imshow("Convex Hull", conFrame);
-		//imshow("Pointed", pointed);
+		// imshow("Convex Hull", conFrame);
+		// imshow("Pointed", pointed);
 
 		handConvexHull.clear();
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 

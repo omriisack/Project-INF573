@@ -5,10 +5,11 @@
 #include "image.h"
 
 class PreProcessing {
-    Image<Vec3b> currentFrame;
-	Image<uchar> difference;
+    Image<Vec3b> currentFrame;     // Original current frame
+	Image<uchar> difference;       // After differencing operation
+	Image<Vec3b> filteredByMask;   // Original frame filtered by a given mask
+    Image<uchar> filteredByColor;  // Given frame filtered by color range
     Image<uchar> canny;
-	Image<Vec3b> filteredByDifference;
     Mat accumulatedFrame;
     vector<vector<Point>> filteredContours;
 	Ptr<BackgroundSubtractor> bgs;
@@ -27,29 +28,29 @@ class PreProcessing {
 	Image<uchar>& getDifference() { return difference; }
     Image<uchar>& getCanny() { return canny; }
     vector<vector<Point>>& getFilteredContours() { return filteredContours; }
-	Image<Vec3b>& getFilteredByDifference() { return filteredByDifference; }
+	Image<Vec3b>& getFilteredByMask() { return filteredByMask; }
 
-
-	
-    // Computer the difference between the current frame and previous frame
+    // Frame Differencing
     void frameDifferencingBgSb(uchar threshold, bool show);
     void frameDifferencingAvgRun(uchar hight, uchar lowt, bool show);
-	void frameThreshold(Mat& frame, uchar threshold);
-    void addContours();
+	
+    // Filters
+	void filterByMask(const Image<uchar>& mask, bool show);
+	void filterSkinColor(const Image<Vec3b>& input, bool show);
+    void frameThreshold(Mat& frame, uchar threshold);
     void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
-	void filterByMask(const Image<Vec3b>& frame, const Image<uchar>& mask, Image<Vec3b>& res);
-	void filterSkinColor(const Image<Vec3b>& input, Image<uchar>& output);
-
+    
+    // Other operations
+    void addContours();
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
         cv::Canny(frame, canny, threshold1, threshold2);
     }
     static void applyGaussianBlur(Mat& frame, Size2i size, double sigmaX, double sigmaY) {
-        cv::GaussianBlur(frame, frame, size, 30, sigmaX, sigmaY);
+        cv::GaussianBlur(frame, frame, size, sigmaX, sigmaY);
     }
     static void applyDilate(Mat& frame, int strength = 1) {
         cv::dilate(frame, frame, cv::Mat(), cv::Point(-1, -1), strength);
     }
-
 	static void applyErode(Mat& frame, int strength = 1) {
 		cv::erode(frame, frame, cv::Mat(), cv::Point(-1, -1), strength);
 	}
