@@ -77,14 +77,12 @@ bool contourComparator(vector<Point>& c1, vector<Point>& c2)
 }
 
 
-void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexHull, vector<Point>& finalConvexPoints, vector<Point>& finalDefects)
+void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, vector<Point>& finalConvexPoints, vector<Point>& finalDefects)
 {
 	vector<Vec4i> defects;
 	vector<int> labels, intHull;
-	Moments mu = moments(handConvexHull, false);
 
 	// get the centroid of figures.
-	Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
 	partition(handConvexHull, labels, Dist(15));
 
 	// Calculate avg points of each label
@@ -120,19 +118,38 @@ void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexH
 
 }
 
-
-bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull)
+double avgY(vector<Point>& vec)
 {
-	if (handContour.empty() || handConvexHull.empty() || contourArea(handConvexHull) < 10000)
+	if (!vec.size())
+		return 0;
+
+	double avg = 0;
+	for (Point p : vec)
+		avg += p.y;
+
+	return avg / vec.size();
+}
+
+bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc)
+{
+	if (handContour.empty() || handConvexHull.empty() || contourArea(handConvexHull) < 8000)
 		return false;
 	vector<Point> finalDefects, finalConvexPoints;
 	vector<tuple<Point, Point>> lines;
+	double defectsYAvg, convexYAvg;
 
-	createFilteredPoints(handContour, handConvexHull, finalConvexPoints, finalDefects);
+	createFilteredPoints(handContour, handConvexHull, mc, finalConvexPoints, finalDefects);
 	getLinesBetweenPoints(frame, finalConvexPoints, finalDefects, lines);
-
-	if (lines.empty() || finalConvexPoints.size() > 5 || finalDefects.size() > 6)
+	
+	if (lines.empty() || finalConvexPoints.size() < 2 || finalConvexPoints.size() > 5 || finalDefects.size() > 6 || finalDefects.size() >= 2 * finalConvexPoints.size())
 		return false;
+
+	defectsYAvg = avgY(finalDefects);
+	convexYAvg = avgY(finalConvexPoints);
+
+	if (1.5*(defectsYAvg - mc.y) < convexYAvg - mc.y)
+		return false;
+
 
 	int badAngles = 0;
 	for (int i = 0; i < lines.size() - 1; i++)
@@ -149,12 +166,14 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 		circle(frame, finalConvexPoints[i], 4, Scalar(0, 255, 0), -1, 8, 0);
 
 
-	//For debigging
+	//For debugging
 	/*for (int i = 0; i < finalDefects.size(); i++)
 		circle(frame, finalDefects[i], 4, Scalar(0, 0, 255), -1, 8, 0);*/
 
 	/*for (int i = 0; i < lines.size(); i++)
 		line(frame, get<0>(lines[i]), get<1>(lines[i]), Scalar(255, 255, 0), 1);*/
+
+
 
 	return true;
 }
@@ -170,8 +189,15 @@ bool iterateContours(Image<Vec3b>& frame, vector<vector<Point>>& contours)
 	for (int i = 0; i < contours.size(); i++)
 	{
 		convexHull(contours[i], convex);
-		if (detectFingers(frame, contours[i], convex))
+		Moments mu = moments(convex, false);
+		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
+
+		if (detectFingers(frame, contours[i], convex, mc))
+		{
 			detected = true;
+			drawContours(frame, contours, i, Scalar(255, 255, 255), 2);
+		}
+			
 	}
 	return detected;
 }

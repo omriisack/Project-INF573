@@ -56,8 +56,6 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 
-	
-
 	applyMeanDenoise(difference);
 
 	if (show)
@@ -74,12 +72,12 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	Mat noSkinMovement;
 	absdiff(difference, filteredByColor, noSkinMovement);
 	
-	double movement = evaluateMovementByColor();
-	movement /= 255;
-	if (movement*100 > 10 && detected)
+	double movement = evaluateMovementByColor() / 255;
+	
+	if (movement > 0.1 && !detected)
 		accumulateWeighted(copy, accumulatedFrame, (movement));
 	else
-		accumulateWeighted(copy, accumulatedFrame, 0.0005);
+		accumulateWeighted(copy, accumulatedFrame, 0.001);
 
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
