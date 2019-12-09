@@ -15,14 +15,16 @@ class PreProcessing {
     
     Mat accumulatedFrame;
 	Ptr<BackgroundSubtractor> bgs;
+	bool shouldAccumulate;
 
     // Utils
     static Mat matNorm(Mat& mat);
+	double evaluateMovementByColor();
     static int evaluateMovement(Mat& frame1, Mat& frame2);
-    double evaluateMovementByColor();
+  
 
     public:
-    PreProcessing() { bgs = createBackgroundSubtractorKNN(); }
+		PreProcessing() { bgs = createBackgroundSubtractorKNN(); }
 
     // Set the current Frame (suppose that this function is called every frame!)
     void setCurrentFrame(Image<Vec3b>& frame);
@@ -37,7 +39,7 @@ class PreProcessing {
 
     // Frame Differencing
     void frameDifferencingBgSb(uchar threshold, bool show);
-    void frameDifferencingAvgRun(uchar hight, uchar lowt, bool labColor, bool show);
+    void frameDifferencingAvgRun(uchar hight, uchar lowt, bool detected, bool labColor, bool show);
 	
     // Filters
 	void filterByMask(const Image<uchar>& mask, bool show);
@@ -60,7 +62,7 @@ class PreProcessing {
         }
     }
     void applyCanny(Mat& frame, double threshold1, double threshold2) {
-        cv::Canny(frame, canny, threshold1, threshold2);
+        cv::Canny(frame, canny, threshold1, threshold2, 3, true);
         contours.clear();
         vector<Vec4i> hierarchy;
 	    findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);

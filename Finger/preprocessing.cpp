@@ -25,9 +25,8 @@ void PreProcessing::frameDifferencingBgSb(uchar threshold, bool show) {
     }
 }
 
-void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labColor, bool show) {
+void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detected, bool labColor, bool show) {
 	Mat copy = Image<Vec3b>(currentFrame.clone()), diff;
-	GaussianBlur(copy, copy, Size(5, 5), 30, 30);
 
 	// Calculate an "avg" frame, compute the differencing on it
 	if (accumulatedFrame.empty()) {
@@ -54,8 +53,10 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labCol
 	// float a = evaluateMovement(resultAccumulatedFrame, copy);
 	// accumulateWeighted(copy, accumulatedFrame, 0.005 * sqrt(a));
 
-	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
+	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
+
+	
 
 	applyMeanDenoise(difference);
 
@@ -75,9 +76,10 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labCol
 	
 	double movement = evaluateMovementByColor();
 	movement /= 255;
-	std::cout << "Movement: " << movement*100 << std::endl;
-	if (movement*100 > 10)
+	if (movement*100 > 10 && detected)
 		accumulateWeighted(copy, accumulatedFrame, (movement));
+	else
+		accumulateWeighted(copy, accumulatedFrame, 0.0005);
 
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
