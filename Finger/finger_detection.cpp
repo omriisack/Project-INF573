@@ -146,8 +146,8 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 
 	defectsYAvg = avgY(finalDefects);
 	convexYAvg = avgY(finalConvexPoints);
-
-	if (1.5*(defectsYAvg - mc.y) < convexYAvg - mc.y)
+	double defectsConvexYRelation = (convexYAvg - mc.y) / (defectsYAvg - mc.y);
+	if (defectsConvexYRelation < 1.2)
 		return false;
 
 
@@ -172,8 +172,6 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 
 	/*for (int i = 0; i < lines.size(); i++)
 		line(frame, get<0>(lines[i]), get<1>(lines[i]), Scalar(255, 255, 0), 1);*/
-
-
 
 	return true;
 }
@@ -218,8 +216,8 @@ int main() {
 		capture >> frame;
 		if (frame.empty())
 			break;
-		auto conFrame = frame.clone();
-		Image<Vec3b> pointed = (Image<Vec3b>)frame.clone();
+
+		Image<Vec3b> result = (Image<Vec3b>)frame.clone();
 		vector<Point> handConvexHull;
 		vector<Point> handContour;
 
@@ -232,11 +230,12 @@ int main() {
 
 		// filter the skin color
 		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), false);
+
 		// canny
 		preProcessing.applyCanny(preProcessing.getDifference(), 50, 30);
 		
-		detected = iterateContours(pointed, preProcessing.getContours());
-		imshow("Pointed", pointed);
+		detected = iterateContours(result, preProcessing.getContours());
+		imshow("Hand Detector", result);
 
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
