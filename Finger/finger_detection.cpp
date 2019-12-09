@@ -19,30 +19,43 @@ struct Dist
 	}
 };
 
-
-Point& getClosestFromSide(Point& refPoint, vector<Point>& candidates, bool fromLeft)
+bool isCloseToOthers(Point& p, vector<Point>& others, int distance)
 {
-	if (candidates.empty())
-		return Point(-1, -1); //Dummy value
+	for (Point q : others)
+		if (norm(p - q) < distance)
+			return true;
 
-	int bestIndex = -1, minDistance = 10000, distance;
-	for (int i = 0; i < candidates.size(); i++)
-	{
-		//If looking for closest from left, then  refPoint.x > candidates.x
-		distance = fromLeft ? refPoint.x - candidates[i].x : candidates[i].x - refPoint.x;
-		if (distance <= minDistance && distance >= 0)
-		{
-			minDistance = distance;
-			bestIndex = i;
-		}
-	}
-
-	if (bestIndex == -1) //No point found from any candidates
-		return Point(-1, -1);
-
-	return candidates[bestIndex];
+	return false;
 }
 
+bool compareByX(Point& a, Point& b)
+{
+	return a.x < b.x; // value will be true if a is left of b
+}
+
+void drawLinesBetweenPoints(Mat& frame, vector<Point>& v1, vector<Point>& v2)
+{
+	if (v1.empty() || v2.empty())
+		return;
+
+	sort(v1.begin(), v1.end(),compareByX);
+	sort(v2.begin(), v2.end(), compareByX);
+
+	vector<Point> first = v1.size() > v2.size() ? v1 : v2;
+	vector<Point> second = v1.size() > v2.size() ? v2 : v1;
+
+	int count = min(first.size(), second.size()), i = 0;
+
+	while (i < count)
+	{
+		line(frame, first[i], second[i], Scalar(255, 255, 0), 1);
+		if (i < first.size() - 1)
+			line(frame, second[i], first[i+1], Scalar(255, 255, 0), 1);
+		++i;
+	}
+
+
+}
 
 void maxAreaConvexHull(Mat& frame, vector<vector<Point>>& contours, vector<Point>& handContour, vector<Point>& handConvexHull, bool show)
 {
@@ -128,22 +141,13 @@ void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	cv::convexHull(handContour, intHull, false, false);
 	cv::convexityDefects(handContour, intHull, defects);
 	for (int i = 0; i < defects.size(); i++) {
+		Point& candidate = handContour[defects[i].val[2]];
 		//Get only distant defects (area between fingers) and above centroid
-		if((defects[i].val[3] > 250) && (handContour[defects[i].val[2]].y < mc.y))
-			finalDefects.push_back(handContour[defects[i].val[2]]);
+		if((defects[i].val[3] > 250) && (handContour[defects[i].val[2]].y < mc.y) && !isCloseToOthers(candidate,finalConvexPoints, 10))
+			finalDefects.push_back(candidate);
 	}
 
-	//Draw lines from every defects to its closest convex points from both sides
-	for (int i = 0; i < finalConvexPoints.size(); i++)
-	{
-		tempR = getClosestFromSide(finalConvexPoints[i], finalDefects, false);
-		tempL = getClosestFromSide(finalConvexPoints[i], finalDefects, true);
-		if (tempR.x > -1)
-			line(frame, finalConvexPoints[i], tempR, Scalar(255, 255, 0), 1);
-		if (tempL.x > -1)
-			line(frame, finalConvexPoints[i], tempL, Scalar(255, 255, 0), 1);
-	}
-
+	drawLinesBetweenPoints(frame, finalConvexPoints, finalDefects);
 
 	// Draw circle for the points found
 	for (int i = 0; i < finalConvexPoints.size(); i++)
@@ -179,9 +183,9 @@ int main() {
 		// frame differencing
 		preProcessing.frameDifferencingAvgRun(15, 5, false, true);
 		// mask
-		preProcessing.filterByMask(preProcessing.getDifference(), true);
+		preProcessing.filterByMask(preProcessing.getDifference(), false);
 		// filter the skin color
-		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), true);
+		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), false);
 		// canny
 		preProcessing.applyCanny(preProcessing.getFilteredByMask(), 50, 110);
 		// convex hull
