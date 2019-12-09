@@ -19,6 +19,7 @@ class PreProcessing {
     // Utils
     static Mat matNorm(Mat& mat);
     static int evaluateMovement(Mat& frame1, Mat& frame2);
+    double evaluateMovementByColor();
 
     public:
     PreProcessing() { bgs = createBackgroundSubtractorKNN(); }
@@ -51,10 +52,10 @@ class PreProcessing {
         for(int i = 0; i < frame.rows; i++) {
             for(int j = 0; j < frame.cols; j++) {
                 auto pix = frame.at<uchar>(i, j);
-                if(pix < 2*mean[0])
-                    frame.at<uchar>(i, j) = pix/stddev[0];
+                if(pix < mean[0])
+                    frame.at<uchar>(i, j) = pix/(2*mean[0]);
                 else
-                    frame.at<uchar>(i, j) = abs(pix - mean[0]);
+                    frame.at<uchar>(i, j) = pix;
             }
         }
     }

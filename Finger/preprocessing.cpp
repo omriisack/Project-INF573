@@ -1,5 +1,6 @@
 #include <queue>
 #include "preprocessing.h"
+#include <iostream>
 
 using namespace std;
 using namespace cv;
@@ -48,9 +49,10 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labCol
 		cvtColor(diff, difference, COLOR_BGR2GRAY);
 	}
 
-	// float a = evaluateMovement(accumulatedFrame, copy);
-	// accumulateWeighted(copy, accumulatedFrame, 0.005 * (sqrt(a)));
-	accumulateWeighted(copy, accumulatedFrame, 0.05);
+	cv::Scalar mean, stddev;
+	cv::meanStdDev(difference, mean, stddev);
+	// float a = evaluateMovement(resultAccumulatedFrame, copy);
+	// accumulateWeighted(copy, accumulatedFrame, 0.005 * sqrt(a));
 
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 3);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
@@ -64,6 +66,18 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool labCol
 	Image<uchar> thresholded = Image<uchar>(Mat::zeros(difference.rows, difference.cols, CV_8U));
 	frameThresholdSeeds(difference, thresholded, hight, lowt);
 	difference = thresholded;
+
+
+	filterByMask(difference, false);
+	filterSkinColor(filteredByMask, false);
+	Mat noSkinMovement;
+	absdiff(difference, filteredByColor, noSkinMovement);
+	
+	double movement = evaluateMovementByColor();
+	movement /= 255;
+	std::cout << "Movement: " << movement*100 << std::endl;
+	if (movement*100 > 10)
+		accumulateWeighted(copy, accumulatedFrame, (movement));
 
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
@@ -86,7 +100,7 @@ void PreProcessing::filterByMask(const Image<uchar>& mask, bool show) {
 void PreProcessing::filterSkinColor(const Image<Vec3b>& input, bool show) {
 	Image<Vec3b> inputHLS;
 	cvtColor(input, inputHLS, COLOR_BGR2HLS);
-	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.05 * 255, 0.05 * 255);
+	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.10 * 255, 0.10 * 255);
 	inRange(inputHLS, lower, upper, filteredByColor);
 	/*erode(filteredByColor, filteredByColor, cv::Mat(), cv::Point(-1, -1), 1);
 	dilate(filteredByColor, filteredByColor, cv::Mat(), cv::Point(-1, -1), 1);*/
@@ -153,6 +167,15 @@ Mat PreProcessing::matNorm(Mat& mat) {
 	return norm;
 }
 
+double PreProcessing::evaluateMovementByColor() {
+	int res;
+	Mat noSkinMovement;
+	subtract(difference, filteredByColor, noSkinMovement);
+
+	imshow("noSkinMovement", noSkinMovement);
+	return mean(noSkinMovement)[0];
+}
+
 int PreProcessing::evaluateMovement(Mat& frame1, Mat& frame2) {
 	//Finding the standard deviations of current and previous frame.
 		Scalar prevStdDev, currentStdDev;
@@ -161,10 +184,11 @@ int PreProcessing::evaluateMovement(Mat& frame1, Mat& frame2) {
 
 		Scalar diff = currentStdDev - prevStdDev;
 		int sum = 0;
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < 3; i++)
 			if(diff[i] < 0)
 				sum += -diff[i];
 			else
 				sum += diff[i];
-		return sum;
+		// return sum;
+		return cv::norm(diff);
 }
