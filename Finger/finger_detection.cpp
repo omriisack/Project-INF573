@@ -9,13 +9,39 @@
 using namespace std;
 using namespace cv;
 
-
-bool touch(Vec3f circle, Point p, float epsilon)
+struct Dist
 {
-	float distance = sqrt((circle[0] - p.x) * (circle[0] - p.x) + (circle[1] - p.y) * (circle[1] - p.y));
-	return abs(distance - circle[2]) < epsilon;
-}
+	int distance;
+	Dist(int input) : distance(input) {};
+	bool operator () (const Point p, const Point q)
+	{
+		return (norm(p - q) <= distance);
+	}
+};
 
+
+Point& getClosestFromSide(Point& refPoint, vector<Point>& candidates, bool fromLeft)
+{
+	if (candidates.empty())
+		return Point(-1, -1); //Dummy value
+
+	int bestIndex = -1, minDistance = 10000, distance;
+	for (int i = 0; i < candidates.size(); i++)
+	{
+		//If looking for closest from left, then  refPoint.x > candidates.x
+		distance = fromLeft ? refPoint.x - candidates[i].x : candidates[i].x - refPoint.x;
+		if (distance <= minDistance && distance >= 0)
+		{
+			minDistance = distance;
+			bestIndex = i;
+		}
+	}
+
+	if (bestIndex == -1) //No point found from any candidates
+		return Point(-1, -1);
+
+	return candidates[bestIndex];
+}
 
 
 void maxAreaConvexHull(Mat& frame, vector<vector<Point>>& contours, vector<Point>& handContour, vector<Point>& handConvexHull, bool show)
@@ -27,7 +53,7 @@ void maxAreaConvexHull(Mat& frame, vector<vector<Point>>& contours, vector<Point
 	vector<vector<Point>> hull(contours.size());
 	int max_area = -1, max_index = -1;
 
-	for (int i = 0; i < contours.size(); ++i)
+	for (int i = 0; i < contours.size(); i++)
 		cv::convexHull(Mat(contours[i]), hull[i], false);
 
 	for (int i = 0; i < hull.size(); i++) {
@@ -62,17 +88,6 @@ void maxAreaConvexHull(Mat& frame, vector<vector<Point>>& contours, vector<Point
 	}
 }
 
-struct Dist
-{
-	int distance;
-	Dist(int input) : distance(input) {};
-	bool operator () (const Point p, const Point q)
-	{
-		return (norm(p - q) <= distance);
-	}
-};
-
-
 
 void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull)
 {
@@ -86,7 +101,8 @@ void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	
 	vector<Vec4i> defects;
 	vector<int> labels, intHull;
-	vector<Point> defectPoints;
+	vector<Point> finalDefects, finalConvexPoints;
+	Point tempL, tempR;
 
 	partition(handConvexHull, labels, Dist(15));
 	
@@ -102,10 +118,10 @@ void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 		avgPoints[i] /= sizeLabels[i];
 	}
 	// Filter points under the centroid
-	vector<Point> filteredConvexPoints;
+
 	for (int i = 0; i < avgPoints.size(); i++) {
 		if (avgPoints[i].y < mc.y)
-			filteredConvexPoints.push_back(avgPoints[i]);
+			finalConvexPoints.push_back(avgPoints[i]);
 	}
 	
 	// Find defect points
@@ -114,15 +130,27 @@ void detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	for (int i = 0; i < defects.size(); i++) {
 		//Get only distant defects (area between fingers) and above centroid
 		if((defects[i].val[3] > 250) && (handContour[defects[i].val[2]].y < mc.y))
-			defectPoints.push_back(handContour[defects[i].val[2]]);
+			finalDefects.push_back(handContour[defects[i].val[2]]);
 	}
 
-	// Draw circle for the points found
-	for (int i = 0; i < filteredConvexPoints.size(); i++)
-		circle(frame, filteredConvexPoints[i], 4, Scalar(0, 255, 0), -1, 8, 0);
+	//Draw lines from every defects to its closest convex points from both sides
+	for (int i = 0; i < finalConvexPoints.size(); i++)
+	{
+		tempR = getClosestFromSide(finalConvexPoints[i], finalDefects, false);
+		tempL = getClosestFromSide(finalConvexPoints[i], finalDefects, true);
+		if (tempR.x > -1)
+			line(frame, finalConvexPoints[i], tempR, Scalar(255, 255, 0), 1);
+		if (tempL.x > -1)
+			line(frame, finalConvexPoints[i], tempL, Scalar(255, 255, 0), 1);
+	}
 
-	for (int i = 0; i < defectPoints.size(); i++)
-		circle(frame, defectPoints[i], 4, Scalar(0, 0, 255), -1, 8, 0);
+
+	// Draw circle for the points found
+	for (int i = 0; i < finalConvexPoints.size(); i++)
+		circle(frame, finalConvexPoints[i], 4, Scalar(0, 255, 0), -1, 8, 0);
+
+	for (int i = 0; i < finalDefects.size(); i++)
+		circle(frame, finalDefects[i], 4, Scalar(0, 0, 255), -1, 8, 0);
 	
 }
 
@@ -155,7 +183,7 @@ int main() {
 		// filter the skin color
 		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), true);
 		// canny
-		preProcessing.applyCanny(preProcessing.getFilteredByMask(), 50, 100);
+		preProcessing.applyCanny(preProcessing.getFilteredByMask(), 50, 110);
 		// convex hull
 		maxAreaConvexHull(conFrame, preProcessing.getContours(), handContour, handConvexHull, true);
 		detectFingers(pointed, handContour, handConvexHull);

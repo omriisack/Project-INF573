@@ -88,8 +88,8 @@ void PreProcessing::filterSkinColor(const Image<Vec3b>& input, bool show) {
 	cvtColor(input, inputHLS, COLOR_BGR2HLS);
 	Vec3b upper = Vec3b(40,  251,  251), lower = Vec3b(3, 0.05 * 255, 0.05 * 255);
 	inRange(inputHLS, lower, upper, filteredByColor);
-	/*erode(output, output, cv::Mat(), cv::Point(-1, -1), 2);
-	dilate(output, output, cv::Mat(), cv::Point(-1, -1), 2);*/
+	/*erode(filteredByColor, filteredByColor, cv::Mat(), cv::Point(-1, -1), 1);
+	dilate(filteredByColor, filteredByColor, cv::Mat(), cv::Point(-1, -1), 1);*/
 	if (show)
 		imshow("filter by color", filteredByColor);
 }
