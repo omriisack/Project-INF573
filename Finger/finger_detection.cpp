@@ -130,7 +130,7 @@ double avgY(vector<Point>& vec)
 	return avg / vec.size();
 }
 
-bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc)
+bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, bool show)
 {
 	if (handContour.empty() || handConvexHull.empty() || contourArea(handConvexHull) < 8000)
 		return false;
@@ -144,10 +144,11 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	if (lines.empty() || finalConvexPoints.size() < 2 || finalConvexPoints.size() > 5 || finalDefects.size() > 6 || finalDefects.size() >= 2 * finalConvexPoints.size())
 		return false;
 
+
 	defectsYAvg = avgY(finalDefects);
 	convexYAvg = avgY(finalConvexPoints);
 	double defectsConvexYRelation = (convexYAvg - mc.y) / (defectsYAvg - mc.y);
-	if (defectsConvexYRelation < 1.2)
+	if (defectsConvexYRelation < 1 || defectsConvexYRelation > 2.5)
 		return false;
 
 
@@ -157,7 +158,7 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 			badAngles++;
 
 
-	if (badAngles > 1) // Allow one large angle for the thumb
+	if (badAngles > 1 || badAngles == 1 && lines.size() == 2 ) // Allow one large angle for the thumb, as long as its not the only one
 		return false;
 
 
@@ -166,18 +167,21 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 		circle(frame, finalConvexPoints[i], 4, Scalar(0, 255, 0), -1, 8, 0);
 
 
-	//For debugging
-	/*for (int i = 0; i < finalDefects.size(); i++)
-		circle(frame, finalDefects[i], 4, Scalar(0, 0, 255), -1, 8, 0);*/
+	if (show)
+	{
+		for (int i = 0; i < finalDefects.size(); i++)
+			circle(frame, finalDefects[i], 4, Scalar(0, 0, 255), -1, 8, 0);
 
-	/*for (int i = 0; i < lines.size(); i++)
-		line(frame, get<0>(lines[i]), get<1>(lines[i]), Scalar(255, 255, 0), 1);*/
+		/*for (int i = 0; i < lines.size(); i++)
+			line(frame, get<0>(lines[i]), get<1>(lines[i]), Scalar(255, 255, 0), 1);*/
+	}
+	
 
 	return true;
 }
 
 
-bool iterateContours(Image<Vec3b>& frame, vector<vector<Point>>& contours)
+bool iterateContours(Image<Vec3b>& frame, vector<vector<Point>>& contours, bool show)
 {
 	if (contours.empty())
 		return false;
@@ -190,10 +194,11 @@ bool iterateContours(Image<Vec3b>& frame, vector<vector<Point>>& contours)
 		Moments mu = moments(convex, false);
 		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
 
-		if (detectFingers(frame, contours[i], convex, mc))
+		if (detectFingers(frame, contours[i], convex, mc, show))
 		{
 			detected = true;
-			drawContours(frame, contours, i, Scalar(255, 255, 255), 2);
+			if (show)
+				drawContours(frame, contours, i, Scalar(255, 255, 255), 1);
 		}
 			
 	}
@@ -232,9 +237,9 @@ int main() {
 		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), false);
 
 		// canny
-		preProcessing.applyCanny(preProcessing.getDifference(), 50, 30);
+		preProcessing.applyCanny(preProcessing.getDifference(), 50, 20);
 		
-		detected = iterateContours(result, preProcessing.getContours());
+		detected = iterateContours(result, preProcessing.getContours(), true);
 		imshow("Hand Detector", result);
 
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
