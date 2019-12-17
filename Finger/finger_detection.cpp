@@ -6,6 +6,9 @@
 #include <algorithm>
 #include "preprocessing.h"
 #include <tuple>
+#include <opencv2/videoio.hpp>
+
+
 using namespace std;
 using namespace cv;
 
@@ -118,21 +121,10 @@ void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexH
 
 }
 
-double avgY(vector<Point>& vec)
-{
-	if (!vec.size())
-		return 0;
-
-	double avg = 0;
-	for (Point p : vec)
-		avg += p.y;
-
-	return avg / vec.size();
-}
 
 bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, bool show)
 {
-	if (handContour.empty() || handConvexHull.empty() || contourArea(handConvexHull) < 8000)
+	if (handContour.empty() || handConvexHull.empty() || contourArea(handContour) < 5000)
 		return false;
 	vector<Point> finalDefects, finalConvexPoints;
 	vector<tuple<Point, Point>> lines;
@@ -141,26 +133,36 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	createFilteredPoints(handContour, handConvexHull, mc, finalConvexPoints, finalDefects);
 	getLinesBetweenPoints(frame, finalConvexPoints, finalDefects, lines);
 	
-	if (lines.empty() || finalConvexPoints.size() < 2 || finalConvexPoints.size() > 5 || finalDefects.size() > 6 || finalDefects.size() >= 2 * finalConvexPoints.size())
+	if (lines.empty() || finalConvexPoints.size() < 2 || finalDefects.size() >= 1.5 * finalConvexPoints.size() || finalConvexPoints.size() > 6 || finalDefects.size() > 5)
 		return false;
-
-
-	defectsYAvg = avgY(finalDefects);
-	convexYAvg = avgY(finalConvexPoints);
-	double defectsConvexYRelation = (convexYAvg - mc.y) / (defectsYAvg - mc.y);
-	if (defectsConvexYRelation < 1 || defectsConvexYRelation > 2.5)
-		return false;
-
 
 	int badAngles = 0;
 	for (int i = 0; i < lines.size() - 1; i++)
 		if (getAngle(lines[i], lines[i+1]) > 1.22)
 			badAngles++;
 
-
 	if (badAngles > 1 || badAngles == 1 && lines.size() == 2 ) // Allow one large angle for the thumb, as long as its not the only one
 		return false;
 
+	double avgConvexDistance = 0, avgDefectsDistance = 0;
+	int farConvexPoints = 0;
+
+
+	for (Point d : finalDefects)
+		avgDefectsDistance += norm(d - Point(mc));
+	avgDefectsDistance /= finalDefects.size();
+
+	for (Point c : finalConvexPoints)
+	{
+		double dist = norm(c - Point(mc));
+		avgConvexDistance +=dist;
+		if (dist >= avgDefectsDistance * 1.5)
+			farConvexPoints++;
+	}
+	avgConvexDistance /= finalConvexPoints.size();
+
+	if (avgDefectsDistance * 1.25 >= avgConvexDistance || !farConvexPoints)
+		return false;
 
 	// Draw circle for the points found
 	for (int i = 0; i < finalConvexPoints.size(); i++)
@@ -176,7 +178,6 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 			line(frame, get<0>(lines[i]), get<1>(lines[i]), Scalar(255, 255, 0), 1);*/
 	}
 	
-
 	return true;
 }
 
@@ -206,6 +207,8 @@ bool iterateContours(Image<Vec3b>& frame, vector<vector<Point>>& contours, bool 
 }
 
 
+
+
 int main() {
 	VideoCapture capture;
 
@@ -215,6 +218,13 @@ int main() {
 	PreProcessing preProcessing;
 	Image<Vec3b> frame;
 	bool detected = false;
+
+
+
+	//VideoWriter video("finger_detection_demo.avi", CV_FOURCC('M', 'J', 'P', 'G'), 24, Size(640, 480));
+	//video.open("finger_detection_demo.avi", CV_FOURCC('M', 'J', 'P', 'G'), 24, Size(640, 480));
+
+
 
 	while(true)
 	{
@@ -226,6 +236,7 @@ int main() {
 		vector<Point> handConvexHull;
 		vector<Point> handContour;
 
+		imshow("real", frame);
 		preProcessing.setCurrentFrame(frame);
 
 		// frame differencing
@@ -242,9 +253,10 @@ int main() {
 		detected = iterateContours(result, preProcessing.getContours(), true);
 		imshow("Hand Detector", result);
 
+		//video.write(result);
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
-	
+	//video.release();
 	return 0;
 }
 

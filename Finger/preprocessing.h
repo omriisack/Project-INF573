@@ -65,7 +65,12 @@ class PreProcessing {
         cv::Canny(frame, canny, threshold1, threshold2, 3, true);
         contours.clear();
         vector<Vec4i> hierarchy;
-	    findContours(canny, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
+		vector<vector<Point>> allContours;
+	    findContours(canny, allContours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE);
+		for (int i = 0; i < allContours.size(); i++) //Add only closed contours
+			if (hierarchy[i][2] > 0)
+				contours.push_back(allContours[i]);
+
     }
     static void applyGaussianBlur(Mat& frame, Size2i size, double sigmaX, double sigmaY) {
         cv::GaussianBlur(frame, frame, size, sigmaX, sigmaY);

@@ -57,6 +57,7 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 
 	applyMeanDenoise(difference);
+	applyGaussianBlur(difference, Size(7, 7), 30, 30);
 
 	if (show)
 		imshow("difference", difference);
@@ -75,9 +76,11 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	double movement = evaluateMovementByColor() / 255;
 	
 	if (movement > 0.1 && !detected)
-		accumulateWeighted(copy, accumulatedFrame, (movement));
-	else
-		accumulateWeighted(copy, accumulatedFrame, 0.001);
+		accumulateWeighted(copy, accumulatedFrame, movement-0.098); //Movement - 0.1 + 0.002
+	else 
+		accumulateWeighted(copy, accumulatedFrame, 0.002);
+
+
 
     if (show) {
 		imshow("resultAccumulatedFrame", resultAccumulatedFrame);
