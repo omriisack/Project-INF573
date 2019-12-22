@@ -133,7 +133,7 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	createFilteredPoints(handContour, handConvexHull, mc, finalConvexPoints, finalDefects);
 	getLinesBetweenPoints(frame, finalConvexPoints, finalDefects, lines);
 	
-	if (lines.empty() || finalConvexPoints.size() < 2 || finalDefects.size() >= 1.5 * finalConvexPoints.size() || finalConvexPoints.size() > 6 || finalDefects.size() > 5)
+	if (lines.empty() || finalConvexPoints.size() < 2 || finalDefects.size() >= 1.5 * finalConvexPoints.size() || finalConvexPoints.size() > 5 || finalDefects.size() > 5)
 		return false;
 
 	int badAngles = 0;
@@ -156,12 +156,15 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	{
 		double dist = norm(c - Point(mc));
 		avgConvexDistance +=dist;
-		if (dist >= avgDefectsDistance * 1.5)
+		if (dist >= avgDefectsDistance * 1.75)
 			farConvexPoints++;
 	}
 	avgConvexDistance /= finalConvexPoints.size();
 
-	if (avgDefectsDistance * 1.25 >= avgConvexDistance || !farConvexPoints)
+
+	//Check if the evarage distabce of defects from centroid is shorter from average distance of convexity points.
+	//Check as well if there is at least a single convexity point which is much farther that the average defect (at least a single finger)
+	if (avgDefectsDistance * 1.33 >= avgConvexDistance || !farConvexPoints)
 		return false;
 
 	// Draw circle for the points found
@@ -236,24 +239,27 @@ int main() {
 		vector<Point> handConvexHull;
 		vector<Point> handContour;
 
-		imshow("real", frame);
 		preProcessing.setCurrentFrame(frame);
 
 		// frame differencing
 		preProcessing.frameDifferencingAvgRun(35, 15, detected, false, true);
+
+
+		// canny
+		preProcessing.applyCanny(preProcessing.getDifference(), 50, 20);
+
 		// mask
 		preProcessing.filterByMask(preProcessing.getDifference(), false);
 
 		// filter the skin color
 		preProcessing.filterSkinColor(preProcessing.getFilteredByMask(), false);
 
-		// canny
-		preProcessing.applyCanny(preProcessing.getDifference(), 50, 20);
 		
 		detected = iterateContours(result, preProcessing.getContours(), true);
 		imshow("Hand Detector", result);
 
 		//video.write(result);
+
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
 	//video.release();

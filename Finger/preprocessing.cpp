@@ -76,7 +76,7 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	double movement = evaluateMovementByColor() / 255;
 	
 	if (movement > 0.1 && !detected)
-		accumulateWeighted(copy, accumulatedFrame, movement-0.098); //Movement - 0.1 + 0.002
+		accumulateWeighted(copy, accumulatedFrame, movement); 
 	else 
 		accumulateWeighted(copy, accumulatedFrame, 0.002);
 
