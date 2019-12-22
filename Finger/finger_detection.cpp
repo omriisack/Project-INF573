@@ -133,7 +133,7 @@ bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point
 	createFilteredPoints(handContour, handConvexHull, mc, finalConvexPoints, finalDefects);
 	getLinesBetweenPoints(frame, finalConvexPoints, finalDefects, lines);
 	
-	if (lines.empty() || finalConvexPoints.size() < 2 || finalDefects.size() >= 1.5 * finalConvexPoints.size() || finalConvexPoints.size() > 5 || finalDefects.size() > 5)
+	if (lines.empty() || finalConvexPoints.size() < 2 || finalDefects.size() >= 1.5 * finalConvexPoints.size() || finalConvexPoints.size() > 6 || finalDefects.size() > 5)
 		return false;
 
 	int badAngles = 0;
