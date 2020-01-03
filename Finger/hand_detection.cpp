@@ -113,7 +113,7 @@ void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexH
 }
 
 
-bool detectFingers(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, bool show)
+bool detectHand(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, bool show)
 {
 	if (handContour.empty() || handConvexHull.empty() || contourArea(handContour) < 5000)
 		return false;
@@ -189,7 +189,7 @@ bool findHandContour(Image<Vec3b>& frame, vector<vector<Point>>& contours, bool 
 		Moments mu = moments(convex, false);
 		Point2f mc = Point2f(mu.m10 / mu.m00, mu.m01 / mu.m00);
 
-		if (detectFingers(frame, contours[i], convex, mc, show))
+		if (detectHand(frame, contours[i], convex, mc, show))
 		{
 			detected = true;
 			if (show)

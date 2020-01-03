@@ -56,7 +56,7 @@ void PreProcessing::frameDifferencingAvgRun(uchar hight, uchar lowt, bool detect
 	cv::erode(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 	cv::dilate(difference, difference, cv::Mat(), cv::Point(-1, -1), 2);
 
-	applyMeanDenoise(difference);
+	applyMeanReduction(difference);
 	applyGaussianBlur(difference, Size(7, 7), 30, 30);
 
 	if (show)

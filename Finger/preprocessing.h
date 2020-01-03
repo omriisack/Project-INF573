@@ -48,14 +48,14 @@ class PreProcessing {
     void frameThresholdSeeds(const Image<uchar>& frame, Image<uchar>& res, int t1, int t2);
     
     // Other operations
-    void applyMeanDenoise(Mat& frame) {
+    void applyMeanReduction(Mat& frame) {
         cv::Scalar mean, stddev;
         cv::meanStdDev(frame, mean, stddev);
         for(int i = 0; i < frame.rows; i++) {
             for(int j = 0; j < frame.cols; j++) {
                 auto pix = frame.at<uchar>(i, j);
-                if(pix < mean[0])
-                    frame.at<uchar>(i, j) = pix/(2*mean[0]);
+                if(pix < 2*mean[0])
+                    frame.at<uchar>(i, j) = pix/2;
                 else
                     frame.at<uchar>(i, j) = pix;
             }
