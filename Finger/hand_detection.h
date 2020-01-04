@@ -8,4 +8,12 @@
 
 #include "image.h"
 
+double getAngle(tuple<Point, Point>& l1, tuple<Point, Point>& l2);
+
+void getLinesBetweenPoints(Mat& frame, vector<Point>& v1, vector<Point>& v2, vector<tuple<Point, Point>>& lines);
+
+void createFilteredPoints(vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, vector<Point>& finalConvexPoints, vector<Point>& finalDefects);
+
+bool detectHand(Image<Vec3b>& frame, vector<Point>& handContour, vector<Point>& handConvexHull, Point2f& mc, bool show)
+
 bool findHandContour(Image<Vec3b>& frame, vector<vector<Point>>& contours, bool show);
