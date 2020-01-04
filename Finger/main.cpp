@@ -22,13 +22,6 @@ int main() {
 	Image<Vec3b> frame;
 	bool detected = false;
 
-
-
-	//VideoWriter video("finger_detection_demo.avi", CV_FOURCC('M', 'J', 'P', 'G'), 24, Size(640, 480));
-	//video.open("finger_detection_demo.avi", CV_FOURCC('M', 'J', 'P', 'G'), 24, Size(640, 480));
-
-
-
 	while(true)
 	{
 		capture >> frame;
@@ -58,11 +51,8 @@ int main() {
 		detected = findHandContour(result, preProcessing.getContours(), true);
 		imshow("Hand Detector", result);
 
-		//video.write(result);
-
 		if (waitKey(10) == 27) break; // stop capturing by pressing ESC 
 	}
-	//video.release();
 	return 0;
 }
 
